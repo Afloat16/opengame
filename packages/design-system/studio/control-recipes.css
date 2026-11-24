@@ -1,0 +1,14 @@
+/* Shared control token overrides. */
+:root[data-motion-ui] .hf-od-primary {
+  --color-accent: var(--motion-action);
+  --color-accent-hover: var(--motion-action-hover);
+  --color-on-accent: var(--motion-on-action);
+}
+:root[data-motion-ui] .hf-od-primary[data-tone="brand"] {
+  --motion-action: var(--motion-brand);
+  --motion-action-hover: light-dark(var(--motion-brand), var(--motion-accent-hover));
+  --motion-on-action: var(--motion-on-brand);
+}
+:root[data-motion-ui] .hf-od-field {
+  --color-accent: var(--motion-focus);
+}
