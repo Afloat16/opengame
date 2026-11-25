@@ -1,0 +1,30 @@
+{
+  "id": "arrow-pop-clear",
+  "title": "Arrow Pop Clear",
+  "description": "Tap directional arrow tiles in the exact unobstructed order so every piece zips cleanly off the board—a crisp, hyper-addictive spatial brain-teaser.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap any arrow block whose forward path is unobstructed to launch it off the board until zero blocks remain.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "箭头消消",
+      "description": "抖音超火极简解压箭头消消：看准每个箭头的飞行朝向，按顺序点飞无遮挡方块，清空整盘强迫症极度爽！",
+      "controls": "点击前方无阻挡的箭头方块将其发射飞出棋盘，按巧妙顺序清空全部方块通关。"
+    }
+  }
+}

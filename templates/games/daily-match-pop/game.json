@@ -1,0 +1,30 @@
+{
+  "id": "daily-match-pop",
+  "title": "Daily Match Pop",
+  "description": "Pop glossy candies and colorful blocks in snappy match-3 rounds—unleash rainbow cascades and rack up huge combo multipliers across relaxing stages.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Swap adjacent tiles to align three or more of the same color and clear every level objective.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "天天消一消",
+      "description": "经典全民解压三消天天消一消：指尖轻划触发全屏彩虹连锁爆破，音效清脆手感丝滑，随时来一局根本停不下来！",
+      "controls": "滑动交换相邻方块凑齐三个及以上同色消除，合成特效道具轻松通关。"
+    }
+  }
+}

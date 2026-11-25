@@ -1,0 +1,30 @@
+{
+  "id": "gomoku-ai-pro",
+  "title": "Gomoku AI Pro",
+  "description": "Challenge a sharp offline Five-in-a-Row AI on a warm wooden Go board—set clever double-three traps, block threats, and connect five stones first.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "retro",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap any empty grid intersection on the board to place your stone and connect five in a row horizontally, vertically, or diagonally.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "AI 五子棋",
+      "description": "国民经典对弈 AI 五子棋：离线随时迎战智能电脑棋手，步步布阵活三冲四抢先连成五子一举定胜负！",
+      "controls": "点击木质棋盘上的空交叉点落子，率先在横、竖或斜方向连成五颗同色棋子即获胜。"
+    }
+  }
+}

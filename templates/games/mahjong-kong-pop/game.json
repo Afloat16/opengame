@@ -1,0 +1,30 @@
+{
+  "id": "mahjong-kong-pop",
+  "title": "Mahjong Kong Pop",
+  "description": "Combine classic Chinese Mahjong Chow, Pong, and Kong melds with brisk puzzle clearing—build winning hands rapidly for explosive score combos.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "retro",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap Mahjong tiles to assemble valid sequences (Chow), triplets (Pong), or quads (Kong) and clear the table.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "麻将吃碰杠",
+      "description": "国风创新玩法麻将吃碰杠：把传统麻将吃碰杠胡牌规则融入爽快消除，连杠清屏爆分超刺激！",
+      "controls": "点击挑选麻将牌组成顺子吃、刻子碰或四张杠触发消除爆分，清空牌堆通关。"
+    }
+  }
+}

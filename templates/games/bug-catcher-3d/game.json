@@ -1,0 +1,30 @@
+{
+  "id": "bug-catcher-3d",
+  "title": "Bug Catcher 3D",
+  "description": "Spot and snatch mischievous crawling bugs darting across vibrant 3D scenes—chain fast reflexes and clear every wave before the clock expires.",
+  "genre": "casual",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap swiftly on scurrying bugs to catch them and hit each stage's target score before time runs out.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "抓虫子 3D",
+      "description": "魔性手速解压抓虫子 3D：眼疾手快精准捕捉满屏乱窜的搞笑小虫子，连击加分超上头，专治手残！",
+      "controls": "眼疾手快点击屏幕中四处乱窜的小虫子进行捕捉，达成目标分数即可过关。"
+    }
+  }
+}

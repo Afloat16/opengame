@@ -1,0 +1,30 @@
+{
+  "id": "ludo-aero-chess",
+  "title": "Aeroplane Chess Ludo",
+  "description": "Roll the dice, launch your colorful fleet out of the hangar, ride shortcut flight lanes, bump rivals back to base, and race all four planes home.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "retro",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap the dice to roll, then tap any highlighted airplane token to move it along the colorful board track.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "经典飞行棋",
+      "description": "国民童年回忆经典飞行棋：摇出 6 点霸气起飞，踩同色格子连跳捷径、撞飞对手棋子，率先全机抵达终点夺冠！",
+      "controls": "点击骰子投掷点数，再点击可移动的飞机棋子沿赛道前进、撞击对手并冲向终点。"
+    }
+  }
+}

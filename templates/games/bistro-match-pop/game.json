@@ -1,0 +1,30 @@
+{
+  "id": "bistro-match-pop",
+  "title": "Bistro Match Pop",
+  "description": "Match sizzling burgers, desserts, and gourmet ingredients in a cheerful restaurant puzzle—chain power-up combos to satisfy VIP orders and renovate your diner.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Swap or tap matching food tiles to clear order targets and trigger explosive kitchen boosters.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "餐厅消消消",
+      "description": "美食主题爆款消除餐厅消消消：消除诱人汉堡甜品触发连环爆破特效，攒星星装修你的网红人气小餐厅！",
+      "controls": "滑动交换或点击相邻美食方块凑齐三消，完成顾客订单目标即可通关。"
+    }
+  }
+}

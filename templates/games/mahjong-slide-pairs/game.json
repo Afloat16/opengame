@@ -1,0 +1,30 @@
+{
+  "id": "mahjong-slide-pairs",
+  "title": "Mahjong Slide Pairs",
+  "description": "Slide entire rows and columns of crisp Mahjong tiles so identical pieces bump together and vanish—a fresh Sichuan-style logic twist that hooks players fast.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "retro",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag any tile horizontally or vertically to slide its line and align two matching Mahjong tiles side by side.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "麻将挪对对",
+      "description": "抖音微信超火麻将挪对对：整行整列丝滑推动麻将牌，让相同花色贴在一起瞬间消除，越玩越烧脑越上头！",
+      "controls": "上下左右拖动麻将牌带动整排移动，让两张相同麻将紧挨碰对即可消除通关。"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "car-klotski-3d",
+  "title": "Car Klotski 3D",
+  "description": "Slide parked sedans, trucks, and buses along a cramped lot to carve out a clear exit lane for your red hero car in the fewest moves possible.",
+  "genre": "casual",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag vehicles forward or backward along their lanes until the target car can drive straight through the exit.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "汽车华容道",
+      "description": "经典烧脑华容道挪车神作：前后挪动挡路轿车与大巴腾出通道，用最少步数把红色主角车顺利开出拥堵停车场！",
+      "controls": "按住车辆沿车头或车尾方向滑动挪位，为主角车让出直通出口的通道即可过关。"
+    }
+  }
+}

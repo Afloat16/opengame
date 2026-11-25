@@ -1,0 +1,30 @@
+{
+  "id": "billiards-trick-shot",
+  "title": "Billiards Trick Shot",
+  "description": "Line up crisp bank angles, control cue power with smooth pullback physics, and pocket every striped and solid ball across precision pool drills.",
+  "genre": "casual",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag to aim the cue stick toward your target ball, then pull back the power bar and release to strike.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "landscape",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "桌球大师训练",
+      "description": "超真实物理手感桌球大师训练：拉杆瞄准辅助线丝滑击球，练习翻袋走位一杆清台，随时随地过足台球瘾！",
+      "controls": "拖动屏幕瞄准击球方向，拉动蓄力条控制出杆力度，松手击球将目标球打入球袋。"
+    }
+  }
+}
