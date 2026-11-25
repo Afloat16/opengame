@@ -52,7 +52,7 @@ it('round-trips the Black Friday collection and its selected Skill without leaki
 
 it('opens retired API links in the usual workspace and drops their tool on navigation', () => {
   const link = 'http://localhost/?page=api&tool=openmotion_media_use';
-  expect(readWorkspacePage(new URL(link).search).explore).toBe(true);
+  expect(readWorkspacePage(new URL(link).search)).toMatchObject({ superAgent: true, superAgentMode: 'game' });
   const project = new URL(link + '&project=film#project/film');
   expect(readWorkspacePage(project.search, project.hash)).toEqual(readWorkspacePage('?project=film', project.hash));
   expect(workspacePageHref(project.href, { motion: true })).toBe('/motion?project=film#project/film');

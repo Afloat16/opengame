@@ -2338,7 +2338,8 @@ it('keeps multiplayer games playable in the catalog and only scaffolds single-pl
 
     const topBar = container.querySelector('.om-sa-composer-top-bar')!;
     expect(topBar).toBeTruthy();
-    expect(topBar.textContent).toContain('Shooter');
+    expect(topBar.textContent).toContain('Genre');
+    expect(topBar.textContent).not.toContain('Shooter');
     expect(topBar.textContent).toContain('Style');
     expect(topBar.textContent).toContain('Setting');
     expect(topBar.textContent).toContain('Landscape');
@@ -2393,7 +2394,7 @@ it('keeps multiplayer games playable in the catalog and only scaffolds single-pl
 
     expect(createGameBody).toEqual({
       prompt: 'Pixel shooter in space',
-      genre: 'shooter',
+      genre: null,
       style: 'pixel',
       setting: null,
       multiplayer: false,

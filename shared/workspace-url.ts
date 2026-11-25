@@ -13,7 +13,7 @@ export function workspacePageName(query: URLSearchParams, hash: string) {
   const page = query.get('page');
   if (page !== null && page !== 'api') return page;
   if (query.has('project') || query.has('session') || hash.startsWith('#project/') || query.get('templates') === '1' || query.get('hostChrome') === '1') return null;
-  return 'explore';
+  return 'agent';
 }
 
 /** Independent workspace pages remain usable even when the retained project cannot start. */

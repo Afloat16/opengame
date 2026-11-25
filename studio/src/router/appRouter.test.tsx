@@ -466,8 +466,8 @@ describe('LegacyQueryRedirect', () => {
     expect(resolveLegacyQueryRedirect('/', '?page=shorts')).toBe('/studios/shorts');
 
     // Phase 4c — core surfaces and legacy root/editor entrypoints
-    expect(resolveLegacyQueryRedirect('/', '')).toBe('/explore');
-    expect(resolveLegacyQueryRedirect('/', '?embed=1')).toBe('/explore?embed=1');
+    expect(resolveLegacyQueryRedirect('/', '')).toBe('/agent?mode=game');
+    expect(resolveLegacyQueryRedirect('/', '?embed=1')).toBe('/agent?embed=1&mode=game');
     expect(resolveLegacyQueryRedirect('/', '?page=explore&community=product-films&medium=image')).toBe(
       '/explore?community=product-films&medium=image',
     );
@@ -488,7 +488,7 @@ describe('LegacyQueryRedirect', () => {
     ).toBe('/editor/p1?session=s1&embed=1#project/p1?v=1&t=12');
     expect(resolveLegacyQueryRedirect('/', '', '#project/p1?t=12')).toBe('/editor/p1#project/p1?t=12');
     expect(resolveLegacyQueryRedirect('/', '?session=s1')).toBe('/editor?session=s1');
-    expect(resolveLegacyQueryRedirect('/', '?page=api&tool=openmotion_media_use')).toBe('/explore');
+    expect(resolveLegacyQueryRedirect('/', '?page=api&tool=openmotion_media_use')).toBe('/agent?mode=game');
 
     // Root template/hostChrome embeds and incomplete/unknown legacy URLs remain untouched.
     expect(resolveLegacyQueryRedirect('/', '?templates=1&embed=1')).toBeNull();

@@ -44,7 +44,7 @@ export function createAppRouteObjects(shellElement: ReactNode): RouteObject[] {
       path: '/',
       element: shellElement,
       children: [
-        { index: true, handle: handleFor('explore'), element: <LegacyQueryRedirect /> },
+        { index: true, handle: handleFor('agent'), element: <LegacyQueryRedirect /> },
         leaf('explore', 'explore'),
         leaf('explore/:community', 'explore'),
         leaf('agent', 'agent'),

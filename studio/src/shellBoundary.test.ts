@@ -217,7 +217,13 @@ describe("workspace route registry", () => {
   });
 
   it("resolves active routes, tracking pages, and arrival views consistently", () => {
-    const explore = readWorkspacePage("");
+    const defaultRoot = readWorkspacePage("");
+    expect(resolveActiveWorkspaceRoute(defaultRoot, { templatesPage: false, standaloneMcp: false }).id).toBe("agent");
+    expect(defaultRoot.superAgentMode).toBe("game");
+    expect(resolveRouteArrival(defaultRoot, false)).toBe("agent");
+    expect(isWorkspacePageOpen(defaultRoot, false)).toBe(true);
+
+    const explore = readWorkspacePage("?page=explore");
     expect(resolveActiveWorkspaceRoute(explore, { templatesPage: false, standaloneMcp: false }).id).toBe("explore");
     expect(resolveNavTrackingPage(explore, { templatesPage: false, standaloneMcp: false })).toBe("explore");
     expect(resolveRouteArrival(explore, false)).toBe("explore");

@@ -220,11 +220,11 @@ export const DEFAULT_MODE_COMPOSER_OPTIONS: ModeComposerOptions = {
   webTarget: 'responsive',
   webReferenceUrl: '',
 
-  gameGenre: 'shooter',
+  gameGenre: null,
   gameStyle: null,
   gameSetting: null,
   gameOrientation: 'landscape',
-  gamePlayableAd: true,
+  gamePlayableAd: false,
   gameTemplate: null,
 
   codingWorkdir: '',

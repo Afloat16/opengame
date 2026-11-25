@@ -98,7 +98,12 @@ export function readWorkspacePage(search: string, hash = '', pathname = '', capa
   const templateCollection = templates && !creators ? findTemplateCollection(query.get('collection')) : null;
   const selectedSkill = templateCollection === 'black-friday' ? blackFridaySkillIds.find(id => id === skill) ?? null
     : page === 'skills' || collection?.techniques.some(id => id === skill) || (landing && isStudioTechnique(skill)) ? skill : null;
-  const rawSuperAgentMode = page === 'agent' ? query.get('mode') : null;
+  const isRootDefaultAgent = (!pathname || pathname === '/')
+    && (query.get('page') === null || query.get('page') === 'api')
+    && page === 'agent';
+  const rawSuperAgentMode = page === 'agent'
+    ? (query.get('mode') ?? (isRootDefaultAgent ? 'game' : null))
+    : null;
   const superAgentMode: SuperAgentRouteMode | null =
     superAgentModes.find(value => value === rawSuperAgentMode) ?? null;
   const rawSuperAgentDesignModule = page === 'agent' && superAgentMode === 'design' ? query.get('scene') : null;
