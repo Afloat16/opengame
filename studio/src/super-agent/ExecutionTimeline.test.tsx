@@ -828,4 +828,246 @@ describe('ExecutionTimeline creator-first progressive disclosure', () => {
     expect(deliverablesEl.compareDocumentPosition(filesEl) & Node.DOCUMENT_POSITION_FOLLOWING).toBeTruthy();
     expect(filesEl.getAttribute('data-subtle')).toBe('true');
   });
+
+  it('omits static contextTags and scaffolded project chips above user bubbles while keeping real user attachments', async () => {
+    const now = Date.now();
+    const onPreviewAttachment = vi.fn();
+    const chat: SuperAgentChat = {
+      id: 'chat-clean-user-meta',
+      title: '复用 · 3D 物理麻将',
+      intent: 'game',
+      engine: 'codex',
+      model: 'gpt-5',
+      reasoning: 'medium',
+      permissionMode: 'auto',
+      state: 'idle',
+      createdAt: now - 30_000,
+      updatedAt: now,
+      approvals: [],
+      artifacts: [
+        {
+          id: 'game:mahjong-3d',
+          kind: 'game-project',
+          title: '3D 物理麻将',
+          subtitle: 'casual · Game Studio',
+          scenario: 'portrait',
+          projectId: 'mahjong-3d',
+          url: '/motion-api/games/mahjong-3d/play/index.html',
+          createdAt: now - 20_000,
+          updatedAt: now - 10_000,
+        },
+      ],
+      messages: [
+        {
+          id: 'u1',
+          role: 'user',
+          text: '复用 · 3D 物理麻将',
+          contextTags: [
+            { kind: 'mode', label: '游戏', icon: 'gamepad-line', tone: 'agent' },
+            { kind: 'param', label: '超休闲' },
+            { kind: 'param', label: '3D' },
+            { kind: 'param', label: '复古' },
+            { kind: 'param', label: '9:16' },
+            { kind: 'param', label: '单人' },
+          ],
+          attachments: [
+            { kind: 'game-project', id: 'mahjong-3d', title: '3D 物理麻将', subtitle: 'casual · Single player' },
+          ],
+          createdAt: now - 30_000,
+        },
+        {
+          id: 'a1',
+          role: 'assistant',
+          text: '《3D 物理麻将》已为你制作完成。',
+          createdAt: now - 10_000,
+          status: 'completed',
+        },
+        {
+          id: 'u2',
+          role: 'user',
+          text: '参考这张图调一下麻将牌面配色',
+          attachments: [
+            { kind: 'asset', id: 'img-ref-1', title: 'reference-board.png', modality: 'image' },
+          ],
+          createdAt: now - 5_000,
+        },
+      ],
+    };
+
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root!.render(
+        <I18nProvider initialLocale="zh-CN">
+          <ExecutionTimeline
+            chat={chat}
+            busy={false}
+            sending={false}
+            onOpenArtifactId={vi.fn()}
+            onPreviewAttachment={onPreviewAttachment}
+            onCopyText={vi.fn()}
+            onApprove={vi.fn()}
+          />
+        </I18nProvider>,
+      );
+    });
+
+    const userMessages = [...container.querySelectorAll('.om-sa-message[data-role="user"]')];
+    expect(userMessages).toHaveLength(2);
+
+    // Turn 1: neither contextTags nor scaffolded game-project chip renders above the user bubble
+    expect(userMessages[0].querySelector('.om-sa-context-tag')).toBeNull();
+    expect(userMessages[0].querySelector('.om-sa-msg-attachments')).toBeNull();
+    expect(userMessages[0].querySelector('.om-sa-user-bubble')?.textContent).toBe('复用 · 3D 物理麻将');
+
+    // Turn 2: genuine user reference attachment still renders and remains clickable
+    const refChip = userMessages[1].querySelector<HTMLButtonElement>('.om-sa-msg-attachments .om-sa-attachment-chip')!;
+    expect(refChip).toBeTruthy();
+    expect(refChip.textContent).toContain('reference-board.png');
+    await act(async () => refChip.click());
+    expect(onPreviewAttachment).toHaveBeenCalledWith(
+      expect.objectContaining({ id: 'img-ref-1', title: 'reference-board.png' }),
+    );
+  });
+
+  it('renders user send timestamp and handles full thumbs-up / thumbs-down feedback transitions with game quick tags', async () => {
+    const now = Date.now();
+    const onRateTurn = vi.fn(async () => {});
+    const onNotify = vi.fn();
+    const chat: SuperAgentChat = {
+      id: 'chat-turn-feedback-game',
+      title: '3D 物理麻将',
+      intent: 'game',
+      engine: 'codex',
+      model: 'gpt-6.2-sol',
+      reasoning: 'medium',
+      permissionMode: 'auto',
+      state: 'idle',
+      createdAt: now - 30_000,
+      updatedAt: now,
+      approvals: [],
+      artifacts: [
+        {
+          id: 'game:mahjong-3d',
+          kind: 'game-project',
+          title: '3D 物理麻将',
+          subtitle: 'casual · Game Studio',
+          scenario: 'portrait',
+          projectId: 'mahjong-3d',
+          url: '/motion-api/games/mahjong-3d/play/index.html',
+          createdAt: now - 20_000,
+          updatedAt: now - 10_000,
+        },
+      ],
+      messages: [
+        { id: 'u1', role: 'user', text: '复用 · 3D 物理麻将', createdAt: now - 30_000 },
+        { id: 'a1', role: 'assistant', text: '《3D 物理麻将》已为你制作完成。', createdAt: now - 10_000, status: 'completed' },
+      ],
+    };
+
+    container = document.createElement('div');
+    document.body.appendChild(container);
+    root = createRoot(container);
+
+    await act(async () => {
+      root!.render(
+        <I18nProvider initialLocale="zh-CN">
+          <ExecutionTimeline
+            chat={chat}
+            busy={false}
+            sending={false}
+            engineLabel="Codex"
+            onOpenArtifactId={vi.fn()}
+            onPreviewAttachment={vi.fn()}
+            onCopyText={vi.fn()}
+            onNotify={onNotify}
+            onRateTurn={onRateTurn}
+            onApprove={vi.fn()}
+          />
+        </I18nProvider>,
+      );
+    });
+
+    // User message renders a hover-revealed timestamp right below the bubble
+    const userTime = container.querySelector<HTMLTimeElement>('.om-sa-message[data-role="user"] .om-sa-user-time')!;
+    expect(userTime).toBeTruthy();
+    expect(userTime.textContent?.trim()).toMatch(/\d{2}:\d{2}/);
+    expect(userTime.getAttribute('dateTime')).toBe(new Date(now - 30_000).toISOString());
+
+    const upBtn = () => container!.querySelector<HTMLButtonElement>('.om-sa-turn-rate-btn[data-rating="positive"]')!;
+    const downBtn = () => container!.querySelector<HTMLButtonElement>('.om-sa-turn-rate-btn[data-rating="negative"]')!;
+    expect(upBtn().getAttribute('aria-pressed')).toBe('false');
+    expect(downBtn().getAttribute('aria-pressed')).toBe('false');
+
+    // 1. Click thumbs up -> active immediately + opens Game positive tags
+    await act(async () => upBtn().click());
+    expect(upBtn().getAttribute('aria-pressed')).toBe('true');
+    expect(upBtn().getAttribute('data-active')).toBe('positive');
+    expect(onRateTurn).toHaveBeenLastCalledWith({
+      turnId: 'u1',
+      rating: 'positive',
+      scene: 'game',
+      artifactKind: 'game-project',
+      action: 'rate',
+    });
+    const posTags = [...container.querySelectorAll('.om-sa-feedback-tag')].map(el => el.textContent?.trim());
+    expect(posTags).toEqual(['好玩上头', '画面好看', '手感顺滑', '还原需求准']);
+
+    // 2. Dismiss card without selecting anything -> positive rating STAYS active
+    const closeBtn = container.querySelector<HTMLButtonElement>('.om-sa-turn-feedback-close')!;
+    await act(async () => closeBtn.click());
+    expect(container.querySelector('.om-sa-turn-feedback-card')).toBeNull();
+    expect(upBtn().getAttribute('aria-pressed')).toBe('true');
+
+    // 3. Click thumbs up again -> cancels like
+    await act(async () => upBtn().click());
+    expect(upBtn().getAttribute('aria-pressed')).toBe('false');
+    expect(onRateTurn).toHaveBeenLastCalledWith({
+      turnId: 'u1',
+      rating: 'clear',
+      scene: 'game',
+      artifactKind: 'game-project',
+      action: 'clear',
+    });
+
+    // 4. Like again, then switch directly to dislike -> switches to negative + shows Game negative tags
+    await act(async () => upBtn().click());
+    expect(upBtn().getAttribute('aria-pressed')).toBe('true');
+    await act(async () => downBtn().click());
+    expect(upBtn().getAttribute('aria-pressed')).toBe('false');
+    expect(downBtn().getAttribute('aria-pressed')).toBe('true');
+    expect(downBtn().getAttribute('data-active')).toBe('negative');
+    const negTags = [...container.querySelectorAll('.om-sa-feedback-tag')].map(el => el.textContent?.trim());
+    expect(negTags).toEqual(['玩法不好玩', '画面/美术一般', '操作/手感不好', '有 Bug / 跑不起来', '没按要求做']);
+
+    // 5. Pick tags + type custom note + submit -> persists negative reasons & closes card while staying disliked
+    const controlsTag = [...container.querySelectorAll<HTMLButtonElement>('.om-sa-feedback-tag')].find(
+      btn => btn.textContent?.trim() === '操作/手感不好',
+    )!;
+    await act(async () => controlsTag.click());
+    const noteInput = container.querySelector<HTMLInputElement>('.om-sa-feedback-note-input')!;
+    const setter = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, 'value')!.set!;
+    await act(async () => {
+      setter.call(noteInput, '点击麻将响应偏慢');
+      noteInput.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    const submitBtn = container.querySelector<HTMLButtonElement>('.om-sa-feedback-submit-btn')!;
+    expect(submitBtn.disabled).toBe(false);
+    await act(async () => submitBtn.click());
+
+    expect(onRateTurn).toHaveBeenLastCalledWith({
+      turnId: 'u1',
+      rating: 'negative',
+      reasons: ['game_clunky_controls'],
+      note: '点击麻将响应偏慢',
+      scene: 'game',
+      artifactKind: 'game-project',
+      action: 'update_reason',
+    });
+    expect(container.querySelector('.om-sa-turn-feedback-card')).toBeNull();
+    expect(downBtn().getAttribute('aria-pressed')).toBe('true');
+    expect(onNotify).toHaveBeenCalledWith('感谢反馈', 'info');
+  });
 });

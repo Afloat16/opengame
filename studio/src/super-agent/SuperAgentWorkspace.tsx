@@ -1963,6 +1963,78 @@ export function SuperAgentWorkspace({
     [activeChat, handleCompactSession, handleExportSessionLogs],
   );
 
+  const turnFeedbackSeqRef = useRef<Record<string, number>>({});
+
+  const handleRateTurn = useCallback(async (input: import('./ExecutionTimeline').SuperAgentTurnFeedbackSubmit) => {
+    const chatId = activeChat?.id;
+    const seqKey = `${chatId ?? 'draft'}:${input.turnId}`;
+    const seq = (turnFeedbackSeqRef.current[seqKey] ?? 0) + 1;
+    turnFeedbackSeqRef.current[seqKey] = seq;
+    const prevEntry = activeChat?.turnFeedback?.[input.turnId];
+    if (chatId) {
+      setActiveChat(prev => {
+        if (!prev || prev.id !== chatId) return prev;
+        const nextMap = { ...(prev.turnFeedback ?? {}) };
+        if (input.rating === 'clear') {
+          delete nextMap[input.turnId];
+        } else {
+          nextMap[input.turnId] = {
+            rating: input.rating,
+            ...(input.reasons?.length ? { reasons: input.reasons } : {}),
+            ...(input.note ? { note: input.note } : {}),
+            scene: input.scene,
+            updatedAt: Date.now(),
+          };
+        }
+        return {
+          ...prev,
+          turnFeedback: Object.keys(nextMap).length > 0 ? nextMap : undefined,
+        };
+      });
+    }
+    try {
+      const res = await submitSuperAgentFeedback({
+        chatId: chatId ?? null,
+        turnId: input.turnId,
+        rating: input.rating,
+        reasons: input.reasons,
+        note: input.note,
+        scene: input.scene,
+        artifactKind: input.artifactKind,
+        action: input.action,
+        includeLogs: input.action === 'update_reason' && input.rating === 'negative',
+      });
+      if (chatId && turnFeedbackSeqRef.current[seqKey] === seq && res.turnFeedback !== undefined) {
+        const savedFeedback = res.turnFeedback;
+        setActiveChat(prev => {
+          if (!prev || prev.id !== chatId) return prev;
+          const nextMap = { ...(prev.turnFeedback ?? {}) };
+          if (savedFeedback === null) delete nextMap[input.turnId];
+          else nextMap[input.turnId] = savedFeedback;
+          return {
+            ...prev,
+            turnFeedback: Object.keys(nextMap).length > 0 ? nextMap : undefined,
+          };
+        });
+      }
+    } catch (err) {
+      if (chatId && turnFeedbackSeqRef.current[seqKey] === seq) {
+        setActiveChat(prev => {
+          if (!prev || prev.id !== chatId) return prev;
+          const nextMap = { ...(prev.turnFeedback ?? {}) };
+          if (prevEntry) nextMap[input.turnId] = prevEntry;
+          else delete nextMap[input.turnId];
+          return {
+            ...prev,
+            turnFeedback: Object.keys(nextMap).length > 0 ? nextMap : undefined,
+          };
+        });
+      }
+      showToast(err instanceof Error ? err.message : t('Failed to submit feedback'), 'error', 'feedback');
+      throw err;
+    }
+  }, [activeChat, showToast, t]);
+
   const handleSubmitFeedback = useCallback(async () => {
     const trimmed = feedbackNote.trim();
     if (!trimmed || feedbackSubmitting) return;
@@ -2164,6 +2236,7 @@ export function SuperAgentWorkspace({
             onOpenWebUrl={url => void handleOpenWebUrl(url)}
             onCopyText={code => void handleCopyText(code)}
             onNotify={(msg, tone) => showToast(msg, tone === 'error' ? 'error' : 'info', 'feedback')}
+            onRateTurn={handleRateTurn}
             onRunCommand={handleComposerCommand}
             onOpenAccountSettings={onOpenAccountSettings}
             onTriggerActionCard={card => void handleTriggerActionCard(card)}

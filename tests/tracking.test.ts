@@ -6,7 +6,8 @@ import path from 'node:path';
 import { execFileSync } from 'node:child_process';
 import { createTracker, deviceContext, validProperties } from '../tracking/core.ts';
 import { createNodeTracking, createPosthogSender, loadIdentity } from '../tracking/node.ts';
-import { omEvents, studioEvents } from '../tracking/events.ts';
+import { omEvents, studioEvents, superAgentFeedbackReasons } from '../tracking/events.ts';
+import { SUPER_AGENT_FEEDBACK_REASONS } from '../shared/super-agent.ts';
 import { assetActions, gameResultStatusIsLifecycle, gameToolFields, toolFailureFields, toolInputFields } from '../tracking/tool-fields.ts';
 import { closeTracking, createAppTracking, saveTrackingPreference, trackingError } from '../shared/tracking.ts';
 import { Phase1Service } from '../phase1.ts';
@@ -890,4 +891,47 @@ test('game tool calls carry game_id and lifecycle game_status without content', 
     game_id: uuidId, game_status: 'published' }), true);
   assert.equal(validProperties(omEvents, 'mcp_tool_finished', { tool_name: 'motion_game_publish', call_id: uuidId, accepted: true, outcome: 'success', duration_ms: 5,
     game_id: uuidId, game_status: 'shipped' }), false);
+});
+
+test('super_agent_turn_feedback keeps reason tags aligned with shared contract and rejects free-text notes', () => {
+  assert.deepEqual([...superAgentFeedbackReasons], [...SUPER_AGENT_FEEDBACK_REASONS]);
+  assert.equal(Object.hasOwn(studioEvents, 'super_agent_turn_feedback'), false);
+  assert.deepEqual(omEvents.super_agent_turn_feedback.producers, ['worker']);
+
+  const base = {
+    runtime_kind: 'local-direct',
+    engine: 'codex',
+    model_id: 'gpt-6.2-sol',
+    intent: 'game',
+    feedback_scene: 'game',
+    action: 'update_reason',
+    rating: 'negative',
+    previous_rating: 'positive',
+    primary_reason: 'game_clunky_controls',
+    reason_tags: 'game_buggy_or_broken.game_clunky_controls',
+    reason_count: 2,
+    has_note: true,
+    note_length: 18,
+    has_artifact: true,
+    artifact_kind: 'game-project',
+  };
+  assert.equal(validProperties(omEvents, 'super_agent_turn_feedback', base), true);
+  assert.equal(validProperties(omEvents, 'super_agent_turn_feedback', {
+    runtime_kind: 'local-direct',
+    engine: 'codex',
+    intent: 'game',
+    feedback_scene: 'game',
+    action: 'clear',
+    rating: 'none',
+    previous_rating: 'positive',
+    reason_count: 0,
+    has_note: false,
+    has_artifact: false,
+  }), true);
+
+  // Free-text notes, prompts, and unclosed tags must never be admitted into remote telemetry.
+  assert.equal(validProperties(omEvents, 'super_agent_turn_feedback', { ...base, note: 'Private user text' }), false);
+  assert.equal(validProperties(omEvents, 'super_agent_turn_feedback', { ...base, prompt: 'Private prompt' }), false);
+  assert.equal(validProperties(omEvents, 'super_agent_turn_feedback', { ...base, primary_reason: 'free_text_reason' }), false);
+  assert.equal(validProperties(omEvents, 'super_agent_turn_feedback', { ...base, reason_tags: 'not valid spaces' }), false);
 });

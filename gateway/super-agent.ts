@@ -20,6 +20,10 @@ import { superAgentError } from '../tracking/tool-fields.ts';
 
 const knownSuperAgentIntents = new Set(['chat', 'coding', 'design', 'research', 'visualization', 'image', 'video', 'audio', 'game', 'website', 'slides', 'brand']);
 const knownSuperAgentApprovalKinds = new Set(['generation', 'command', 'file', 'tool']);
+const knownFeedbackArtifactKinds = new Set([
+  'game-project', 'design-project', 'motion-project', 'motion-export',
+  'asset-image', 'asset-video', 'asset-audio', 'brand-kit', 'web', 'file',
+]);
 function superAgentRuntimeKind(runtimeId?: string): 'local-direct' | 'local-bridge' | 'remote-service' {
   if (isBridgeRuntimeId(runtimeId)) return 'local-bridge';
   if (isServiceRuntimeId(runtimeId)) return 'remote-service';
@@ -38,6 +42,7 @@ import {
 import type { Modality } from '../shared/gateway.ts';
 import { normalizeToolInput, phase1Tools, validateInput } from '../shared/phase1-tools.ts';
 import {
+  SUPER_AGENT_FEEDBACK_REASONS,
   artifactToSuperAgentIntent,
   classifySuperAgentTool,
   countUnifiedDiffStats,
@@ -59,6 +64,8 @@ import {
   type SuperAgentChatSummary,
   type SuperAgentContextTag,
   type SuperAgentEngine,
+  type SuperAgentFeedbackReason,
+  type SuperAgentFeedbackScene,
   type SuperAgentFileOperation,
   type SuperAgentFollowUpMode,
   type SuperAgentIntent,
@@ -71,6 +78,7 @@ import {
   type SuperAgentResourceAttachment,
   type SuperAgentToolEvent,
   type SuperAgentTurnActivity,
+  type SuperAgentTurnFeedback,
   type SuperAgentTurnInput,
   type SuperAgentUsage,
 } from '../shared/super-agent.ts';
@@ -5044,19 +5052,183 @@ export class SuperAgentConversations {
 
   async recordFeedback(raw: {
     chatId?: string;
+    turnId?: string;
     rating?: string;
+    reasons?: unknown;
     note?: string;
+    scene?: string;
+    artifactKind?: string;
+    action?: string;
     includeLogs?: boolean;
-  }): Promise<{ id: string; createdAt: number; filePath: string }> {
+  }): Promise<{ id: string; createdAt: number; filePath: string; turnFeedback?: SuperAgentTurnFeedback | null }> {
+    const turnId = typeof raw?.turnId === 'string' && raw.turnId.trim() ? raw.turnId.trim().slice(0, 128) : undefined;
     const note = typeof raw?.note === 'string' ? raw.note.trim() : '';
-    if (!note) throw new Error('Feedback note is required');
+    if (!turnId && !note) throw new Error('Feedback note is required');
     if (note.length > 8000) throw new Error('Feedback note is too long');
-    const rating: 'positive' | 'negative' | 'note' =
-      raw?.rating === 'positive' || raw?.rating === 'negative' ? raw.rating : 'note';
-    const includeLogs = raw?.includeLogs !== false;
+
+    const validReasonSet = new Set<string>(SUPER_AGENT_FEEDBACK_REASONS);
+    const reasons: SuperAgentFeedbackReason[] = Array.isArray(raw?.reasons)
+      ? [...new Set(
+          raw.reasons
+            .filter((item): item is SuperAgentFeedbackReason => typeof item === 'string' && validReasonSet.has(item)),
+        )].slice(0, 10)
+      : [];
+
     const createdAt = Date.now();
     const id = randomUUID();
     const chatId = typeof raw?.chatId === 'string' && raw.chatId.trim() ? raw.chatId.trim() : undefined;
+
+    if (turnId) {
+      const turnRating =
+        raw?.rating === 'positive' || raw?.rating === 'negative' || raw?.rating === 'clear'
+          ? raw.rating
+          : null;
+      if (!turnRating) throw new Error('Invalid turn feedback rating');
+
+      let chat: SuperAgentChat | undefined;
+      if (chatId) {
+        try {
+          chat = await this.get(chatId);
+        } catch {
+          // Draft or missing chat; still allow telemetry and standalone local record
+        }
+      }
+
+      const previousRating: 'positive' | 'negative' | 'none' = chat?.turnFeedback?.[turnId]?.rating ?? 'none';
+      const inferredScene: SuperAgentFeedbackScene =
+        raw?.scene === 'game' || raw?.scene === 'general'
+          ? raw.scene
+          : (chat?.intent === 'game' || chat?.artifacts.some(a => a.kind === 'game-project'))
+            ? 'game'
+            : 'general';
+
+      let savedTurnFeedback: SuperAgentTurnFeedback | null = null;
+      if (chat) {
+        if (turnRating === 'clear') {
+          if (chat.turnFeedback && Object.hasOwn(chat.turnFeedback, turnId)) {
+            const nextMap = { ...chat.turnFeedback };
+            delete nextMap[turnId];
+            chat.turnFeedback = Object.keys(nextMap).length > 0 ? nextMap : undefined;
+            await this.persistChatState(chat);
+          }
+        } else {
+          savedTurnFeedback = {
+            rating: turnRating,
+            ...(reasons.length ? { reasons } : {}),
+            ...(note ? { note } : {}),
+            scene: inferredScene,
+            updatedAt: createdAt,
+          };
+          const nextMap = { ...(chat.turnFeedback ?? {}), [turnId]: savedTurnFeedback };
+          const keys = Object.keys(nextMap);
+          if (keys.length > 100) {
+            for (const oldKey of keys.slice(0, keys.length - 100)) delete nextMap[oldKey];
+          }
+          chat.turnFeedback = nextMap;
+          if (reasons.length > 0 || note) {
+            chat.feedback ??= [];
+            chat.feedback.push({
+              id,
+              turnId,
+              rating: turnRating,
+              ...(reasons.length ? { reasons } : {}),
+              note,
+              scene: inferredScene,
+              includeLogs: Boolean(raw?.includeLogs),
+              createdAt,
+            });
+            if (chat.feedback.length > 50) chat.feedback.splice(0, chat.feedback.length - 50);
+          }
+          await this.persistChatState(chat);
+        }
+      } else if (turnRating !== 'clear') {
+        savedTurnFeedback = {
+          rating: turnRating,
+          ...(reasons.length ? { reasons } : {}),
+          ...(note ? { note } : {}),
+          scene: inferredScene,
+          updatedAt: createdAt,
+        };
+      }
+
+      const rawEngine = (chat?.engine || 'unknown').toLowerCase().replace(/[^a-z0-9-]+/g, '-').replace(/^-+|-+$/g, '');
+      const safeEngine = slug.test(rawEngine) ? rawEngine : 'other';
+      const safeModelId = typeof chat?.model === 'string' && modelId.test(chat.model) ? chat.model : undefined;
+      const safeIntent = (chat?.intent && knownSuperAgentIntents.has(chat.intent) ? chat.intent : 'other') as
+        'chat' | 'coding' | 'design' | 'research' | 'visualization' | 'image' | 'video' | 'audio' | 'game' | 'website' | 'slides' | 'brand' | 'other';
+      const rawArtifactKind = typeof raw?.artifactKind === 'string' && raw.artifactKind.trim()
+        ? raw.artifactKind.trim()
+        : [...(chat?.artifacts ?? [])].reverse().find(a => a.kind !== 'web')?.kind ?? chat?.artifacts.at(-1)?.kind;
+      const hasArtifact = Boolean(rawArtifactKind) || Boolean(chat?.artifacts.length);
+      const safeArtifactKind = hasArtifact
+        ? ((rawArtifactKind && knownFeedbackArtifactKinds.has(rawArtifactKind) ? rawArtifactKind : 'other') as
+          'game-project' | 'design-project' | 'motion-project' | 'motion-export' | 'asset-image' | 'asset-video' | 'asset-audio' | 'brand-kit' | 'web' | 'file' | 'other')
+        : undefined;
+
+      const sortedReasons = [...reasons].sort();
+      let joinedReasonTags = '';
+      for (const code of sortedReasons) {
+        const candidate = joinedReasonTags ? `${joinedReasonTags}.${code}` : code;
+        if (candidate.length <= 128) joinedReasonTags = candidate;
+      }
+
+      const nextRating: 'positive' | 'negative' | 'none' = turnRating === 'clear' ? 'none' : turnRating;
+      const resolvedAction: 'rate' | 'update_reason' | 'clear' =
+        turnRating === 'clear'
+          ? 'clear'
+          : raw?.action === 'update_reason' || (previousRating === turnRating && (reasons.length > 0 || Boolean(note)))
+            ? 'update_reason'
+            : 'rate';
+
+      if (resolvedAction !== 'clear' || previousRating !== 'none') {
+        this.options.tracking?.track('super_agent_turn_feedback', {
+          runtime_kind: superAgentRuntimeKind(chat?.runtimeId),
+          engine: safeEngine,
+          ...(safeModelId ? { model_id: safeModelId } : {}),
+          intent: safeIntent,
+          feedback_scene: inferredScene,
+          action: resolvedAction,
+          rating: nextRating,
+          previous_rating: previousRating,
+          ...(reasons[0] ? { primary_reason: reasons[0] } : {}),
+          ...(joinedReasonTags ? { reason_tags: joinedReasonTags } : {}),
+          reason_count: reasons.length,
+          has_note: Boolean(note),
+          ...(note ? { note_length: Math.min(86_400_000, note.length) } : {}),
+          has_artifact: hasArtifact,
+          ...(safeArtifactKind ? { artifact_kind: safeArtifactKind } : {}),
+        }, undefined, 'worker');
+      }
+
+      let filePath = '';
+      if (turnRating !== 'clear') {
+        const includeLogs = Boolean(raw?.includeLogs);
+        const feedbackDir = path.join(this.root, 'feedback');
+        await mkdir(feedbackDir, { recursive: true, mode: 0o700 });
+        const fileName = `${createdAt}-${id.slice(0, 8)}.json`;
+        filePath = path.join(feedbackDir, fileName);
+        const payload = {
+          id,
+          createdAt,
+          chatId: chatId ?? null,
+          turnId,
+          action: resolvedAction,
+          rating: turnRating,
+          previousRating,
+          scene: inferredScene,
+          ...(reasons.length ? { reasons } : {}),
+          note,
+          includeLogs,
+          ...(includeLogs && chat ? { session: chat } : {}),
+        };
+        await writeFile(filePath, JSON.stringify(payload, null, 2) + '\n', { mode: 0o600 });
+      }
+      return { id, createdAt, filePath, turnFeedback: savedTurnFeedback };
+    }
+
+    const rating: 'positive' | 'negative' | 'note' =
+      raw?.rating === 'positive' || raw?.rating === 'negative' ? raw.rating : 'note';
+    const includeLogs = raw?.includeLogs !== false;
 
     let sessionSnapshot: SuperAgentChat | undefined;
     if (chatId) {

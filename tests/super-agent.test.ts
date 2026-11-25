@@ -3688,3 +3688,107 @@ test('resolveGameArtifactPreviewUrl normalizes game cover paths and zero-edit at
   assert.equal(Object.keys(done.turnChangedFiles ?? {}).length, 0);
   await service.close();
 }));
+
+test('SuperAgentConversations.recordFeedback persists per-turn ratings/reasons, handles transitions, and emits privacy-safe remote telemetry', () => fixture(async store => {
+  const { createTracker } = await import('../tracking/core.ts');
+  const { omEvents } = await import('../tracking/events.ts');
+  const tracked: Array<{ event: string; entrypoint: string; properties: Record<string, unknown> }> = [];
+  const tracking = createTracker({
+    registry: omEvents,
+    entrypoint: 'worker',
+    enabled: true,
+    flushIntervalMs: 0,
+    send: async batch => {
+      for (const item of batch) {
+        tracked.push({ event: item.event, entrypoint: item.entrypoint, properties: item.properties });
+      }
+      return 'accepted';
+    },
+  });
+
+  const service = new SuperAgentConversations(store, { tracking });
+  const chat = await service.create({ engine: 'codex', model: 'gpt-6.2-sol', intent: 'game' });
+  const turnId = 'turn-u1';
+
+  // 1. Initial thumbs up (empty note allowed for turn feedback)
+  const r1 = await service.recordFeedback({
+    chatId: chat.id,
+    turnId,
+    rating: 'positive',
+    scene: 'game',
+    artifactKind: 'game-project',
+    action: 'rate',
+  });
+  assert.equal(r1.turnFeedback?.rating, 'positive');
+  assert.equal((await service.get(chat.id)).turnFeedback?.[turnId]?.rating, 'positive');
+
+  // 2. Submit tags + custom note on positive rating
+  const r2 = await service.recordFeedback({
+    chatId: chat.id,
+    turnId,
+    rating: 'positive',
+    reasons: ['game_fun', 'game_smooth_controls', 'unknown_should_be_ignored'],
+    note: 'Secret local feedback text',
+    scene: 'game',
+    artifactKind: 'game-project',
+    action: 'update_reason',
+  });
+  assert.deepEqual(r2.turnFeedback?.reasons, ['game_fun', 'game_smooth_controls']);
+  assert.equal(r2.turnFeedback?.note, 'Secret local feedback text');
+
+  // 3. Switch positive -> negative, then attach negative reason
+  await service.recordFeedback({
+    chatId: chat.id,
+    turnId,
+    rating: 'negative',
+    scene: 'game',
+    artifactKind: 'game-project',
+    action: 'rate',
+  });
+  const r4 = await service.recordFeedback({
+    chatId: chat.id,
+    turnId,
+    rating: 'negative',
+    reasons: ['game_clunky_controls'],
+    note: 'Tap delay on mobile',
+    scene: 'game',
+    artifactKind: 'game-project',
+    action: 'update_reason',
+  });
+  assert.equal(r4.turnFeedback?.rating, 'negative');
+  assert.deepEqual(r4.turnFeedback?.reasons, ['game_clunky_controls']);
+  assert.equal((await service.get(chat.id)).turnFeedback?.[turnId]?.rating, 'negative');
+
+  // 4. Clear rating (and verify second idempotent clear does not emit duplicate telemetry)
+  const r5 = await service.recordFeedback({
+    chatId: chat.id,
+    turnId,
+    rating: 'clear',
+    scene: 'game',
+    action: 'clear',
+  });
+  assert.equal(r5.turnFeedback, null);
+  assert.equal((await service.get(chat.id)).turnFeedback, undefined);
+  await service.recordFeedback({ chatId: chat.id, turnId, rating: 'clear', scene: 'game', action: 'clear' });
+
+  // 5. Session-level feedback (without turnId) still enforces non-empty note
+  await assert.rejects(() => service.recordFeedback({ chatId: chat.id, rating: 'note', note: '   ' }), /Feedback note is required/);
+
+  await tracking.flush();
+  const feedbackEvents = tracked.filter(e => e.event === 'super_agent_turn_feedback');
+  assert.equal(feedbackEvents.length, 5);
+  assert.deepEqual(
+    feedbackEvents.map(e => [e.properties.action, e.properties.previous_rating, e.properties.rating, e.properties.reason_tags ?? null, e.properties.has_note]),
+    [
+      ['rate', 'none', 'positive', null, false],
+      ['update_reason', 'positive', 'positive', 'game_fun.game_smooth_controls', true],
+      ['rate', 'positive', 'negative', null, false],
+      ['update_reason', 'negative', 'negative', 'game_clunky_controls', true],
+      ['clear', 'negative', 'none', null, false],
+    ],
+  );
+  // Raw free-text notes must never leave the machine in telemetry
+  assert.doesNotMatch(JSON.stringify(feedbackEvents), /Secret local feedback text|Tap delay on mobile/);
+  await service.close();
+  tracking.close();
+}));

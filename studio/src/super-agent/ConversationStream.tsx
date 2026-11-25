@@ -76,7 +76,7 @@ import { WorkspaceBack } from '../motion/WorkspaceBack';
 import { AgentModelPicker } from './AgentModelPicker';
 import { compactDirLabel, isInternalManagedStorageDir } from './ChangedFilesTree';
 import type { AccountHandoffResume } from './useAccountHandoff';
-import { ApprovalCard, ExecutionTimeline } from './ExecutionTimeline';
+import { ApprovalCard, ExecutionTimeline, type SuperAgentTurnFeedbackSubmit } from './ExecutionTimeline';
 import {
   ResourceThumbImage,
   resourceIcon,
@@ -304,6 +304,7 @@ export function ConversationStream({
   onOpenWebUrl,
   onCopyText,
   onNotify,
+  onRateTurn,
   onRunCommand,
   onOpenAccountSettings,
   onTriggerActionCard,
@@ -399,6 +400,7 @@ export function ConversationStream({
   onOpenWebUrl?: (url: string) => void;
   onCopyText: (text: string) => void;
   onNotify?: (message: string, tone?: 'info' | 'error') => void;
+  onRateTurn?: (input: SuperAgentTurnFeedbackSubmit) => Promise<void> | void;
   onRunCommand?: (command: ComposerCommandId) => void;
   onOpenAccountSettings?: () => void;
   onTriggerActionCard?: (card: SuperAgentActionCard) => void;
@@ -1929,6 +1931,7 @@ export function ConversationStream({
             onOpenWebUrl={onOpenWebUrl}
             onCopyText={onCopyText}
             onNotify={onNotify}
+            onRateTurn={onRateTurn}
             onOpenAccountSettings={onOpenAccountSettings}
             onTriggerActionCard={onTriggerActionCard}
             onResumeAfterAccount={onResumeAfterAccount}

@@ -8,13 +8,17 @@ import {
   type SuperAgentApproval,
   type SuperAgentArtifact,
   type SuperAgentChat,
-  type SuperAgentContextTag,
+  type SuperAgentFeedbackReason,
+  type SuperAgentFeedbackScene,
   type SuperAgentFileOperation,
   type SuperAgentMessage,
   type SuperAgentPromptSegment,
   type SuperAgentResourceAttachment,
   type SuperAgentToolCategory,
   type SuperAgentToolEvent,
+  type SuperAgentTurnFeedback,
+  type SuperAgentTurnFeedbackAction,
+  type SuperAgentTurnFeedbackRating,
 } from '../../../shared/super-agent';
 import { Tooltip } from '../components/ui/Tooltip';
 import { useI18n, type Translate } from '../i18n/I18n';
@@ -1752,13 +1756,17 @@ function FullUserMessageBubble({
   );
 }
 
-function resolveUserMessageContext(
+const PROJECT_ARTIFACT_PREFIX: Partial<Record<SuperAgentResourceAttachment['kind'], string>> = {
+  'game-project': 'game:',
+  'design-project': 'design:',
+  'motion-project': 'motion:',
+};
+
+function resolveUserMessageAttachments(
   userMsg: SuperAgentMessage,
-  t: (text: string) => string,
-): {
-  contextTags: SuperAgentContextTag[];
-  visibleAttachments: SuperAgentResourceAttachment[];
-} {
+  chat: Pick<SuperAgentChat, 'artifacts' | 'intent'>,
+  isFirstTurn: boolean,
+): SuperAgentResourceAttachment[] {
   const normalizedPrompt = userMsg.text.trim();
   const rawAttachments = userMsg.attachments ?? [];
   const inlineKeys = new Set(
@@ -1766,45 +1774,126 @@ function resolveUserMessageContext(
       .filter(seg => seg.type === 'mention')
       .map(seg => seg.attachmentKey),
   );
-  const hiddenDraftGames: SuperAgentResourceAttachment[] = [];
   const visibleAttachments: SuperAgentResourceAttachment[] = [];
 
   for (const att of rawAttachments) {
+    if (inlineKeys.has(resourceKey(att))) continue;
     const cleanTitle = att.title.trim();
-    const isDuplicateDraftGame =
-      att.kind === 'game-project'
-      && Boolean(normalizedPrompt)
-      && cleanTitle === normalizedPrompt;
-    const isInternalRemixDirective = /^Make an original game in the spirit of\b/i.test(cleanTitle);
-    if (isDuplicateDraftGame) {
-      hiddenDraftGames.push(att);
-    } else if (!isInternalRemixDirective && !inlineKeys.has(resourceKey(att))) {
-      visibleAttachments.push(att);
+    if (/^Make an original game in the spirit of\b/i.test(cleanTitle)) continue;
+
+    const projectPrefix = PROJECT_ARTIFACT_PREFIX[att.kind];
+    if (projectPrefix) {
+      const matchesChatArtifact = chat.artifacts.some(
+        artifact => artifact.kind === att.kind
+          && (artifact.projectId === att.id || artifact.id === `${projectPrefix}${att.id}`),
+      );
+      if (matchesChatArtifact) continue;
     }
-  }
 
-  if (userMsg.contextTags && userMsg.contextTags.length > 0) {
-    const dedupedTags = userMsg.contextTags.filter(
-      tag => !(tag.kind === 'param' && normalizedPrompt && tag.label.trim() === normalizedPrompt),
-    );
-    return { contextTags: dedupedTags, visibleAttachments };
-  }
-
-  if (hiddenDraftGames.length > 0) {
-    const draft = hiddenDraftGames[0];
-    const fallbackTags: SuperAgentContextTag[] = [
-      { kind: 'mode', label: t('Game'), icon: 'gamepad-line', tone: 'agent' },
-    ];
-    if (draft.subtitle) {
-      for (const part of draft.subtitle.split('·')) {
-        const clean = part.trim();
-        if (clean) fallbackTags.push({ kind: 'param', label: t(clean) });
-      }
+    if (att.kind === 'game-project') {
+      const matchesPromptTitle = Boolean(normalizedPrompt) && Boolean(cleanTitle) && (
+        cleanTitle === normalizedPrompt
+        || normalizedPrompt.endsWith(`· ${cleanTitle}`)
+        || normalizedPrompt.endsWith(`·${cleanTitle}`)
+      );
+      if (matchesPromptTitle || (isFirstTurn && chat.intent === 'game')) continue;
     }
-    return { contextTags: fallbackTags, visibleAttachments };
+
+    visibleAttachments.push(att);
   }
 
-  return { contextTags: [], visibleAttachments };
+  return visibleAttachments;
+}
+
+export type SuperAgentTurnFeedbackSubmit = {
+  turnId: string;
+  rating: 'positive' | 'negative' | 'clear';
+  reasons?: SuperAgentFeedbackReason[];
+  note?: string;
+  scene: SuperAgentFeedbackScene;
+  artifactKind?: string;
+  action: SuperAgentTurnFeedbackAction;
+};
+
+type OpenTurnFeedbackState = {
+  turnId: string;
+  rating: SuperAgentTurnFeedbackRating;
+  scene: SuperAgentFeedbackScene;
+  artifactKind?: string;
+  reasons: SuperAgentFeedbackReason[];
+  note: string;
+  submitting: boolean;
+};
+
+const TURN_FEEDBACK_TAGS: Record<
+  SuperAgentFeedbackScene,
+  Record<SuperAgentTurnFeedbackRating, ReadonlyArray<{ id: SuperAgentFeedbackReason; label: string }>>
+> = {
+  game: {
+    positive: [
+      { id: 'game_fun', label: 'Fun to play' },
+      { id: 'game_great_visuals', label: 'Great visuals' },
+      { id: 'game_smooth_controls', label: 'Smooth controls' },
+      { id: 'game_matches_request', label: 'Nailed my request' },
+    ],
+    negative: [
+      { id: 'game_not_fun', label: "Gameplay isn't fun" },
+      { id: 'game_weak_visuals', label: 'Visuals need polish' },
+      { id: 'game_clunky_controls', label: 'Controls feel off' },
+      { id: 'game_buggy_or_broken', label: 'Broken or buggy' },
+      { id: 'game_missed_request', label: 'Missed my request' },
+    ],
+  },
+  general: {
+    positive: [
+      { id: 'great_result', label: 'Great result' },
+      { id: 'matches_request', label: 'Nailed my request' },
+      { id: 'fast_delivery', label: 'Fast delivery' },
+      { id: 'clear_and_helpful', label: 'Clear and helpful' },
+    ],
+    negative: [
+      { id: 'missed_request', label: 'Missed my request' },
+      { id: 'low_quality', label: 'Low output quality' },
+      { id: 'broken_or_error', label: 'Broken or errored' },
+      { id: 'too_slow_or_off_track', label: 'Too slow or off-track' },
+    ],
+  },
+};
+
+function formatUserMessageTime(createdAt: number, locale: string): { short: string; full: string } | null {
+  if (!Number.isFinite(createdAt) || createdAt <= 0) return null;
+  const date = new Date(createdAt);
+  if (!Number.isFinite(date.getTime())) return null;
+  const now = new Date();
+  const sameDay =
+    date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth()
+    && date.getDate() === now.getDate();
+  const sameYear = date.getFullYear() === now.getFullYear();
+  try {
+    const short = new Intl.DateTimeFormat(
+      locale,
+      sameDay
+        ? { hour: '2-digit', minute: '2-digit', hour12: false }
+        : sameYear
+          ? { month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false }
+          : { year: 'numeric', month: 'numeric', day: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false },
+    ).format(date);
+    const full = new Intl.DateTimeFormat(locale, {
+      year: 'numeric',
+      month: '2-digit',
+      day: '2-digit',
+      hour: '2-digit',
+      minute: '2-digit',
+      second: '2-digit',
+      hour12: false,
+    }).format(date);
+    return { short, full };
+  } catch {
+    const hh = String(date.getHours()).padStart(2, '0');
+    const mm = String(date.getMinutes()).padStart(2, '0');
+    return { short: `${hh}:${mm}`, full: date.toISOString() };
+  }
 }
 
 export function ExecutionTimeline({
@@ -1823,6 +1912,7 @@ export function ExecutionTimeline({
   onOpenWebUrl,
   onCopyText,
   onNotify,
+  onRateTurn,
   onOpenAccountSettings,
   onTriggerActionCard,
   onResumeAfterAccount,
@@ -1849,6 +1939,7 @@ export function ExecutionTimeline({
   onOpenWebUrl?: (url: string) => void;
   onCopyText: (text: string) => void;
   onNotify?: (message: string, tone?: 'info' | 'error') => void;
+  onRateTurn?: (input: SuperAgentTurnFeedbackSubmit) => Promise<void> | void;
   onOpenAccountSettings?: () => void;
   onTriggerActionCard?: (card: SuperAgentActionCard) => void;
   onResumeAfterAccount?: AccountHandoffResume;
@@ -1860,7 +1951,129 @@ export function ExecutionTimeline({
   onApprove: (approvalId: string, accepted: boolean, alwaysAllow?: boolean) => void;
   onContinue?: () => void;
 }) {
-  const { t } = useI18n();
+  const { t, locale } = useI18n();
+  const [localTurnFeedback, setLocalTurnFeedback] = useState<Record<string, SuperAgentTurnFeedback | null>>({});
+  const [openFeedback, setOpenFeedback] = useState<OpenTurnFeedbackState | null>(null);
+  const feedbackSeqRef = useRef<Record<string, number>>({});
+
+  useEffect(() => {
+    setLocalTurnFeedback({});
+    setOpenFeedback(null);
+    feedbackSeqRef.current = {};
+  }, [chat.id]);
+
+  const getTurnFeedback = (turnId: string): SuperAgentTurnFeedback | null =>
+    Object.hasOwn(localTurnFeedback, turnId)
+      ? localTurnFeedback[turnId]
+      : (chat.turnFeedback?.[turnId] ?? null);
+
+  const handleThumbClick = (
+    turnId: string,
+    targetRating: SuperAgentTurnFeedbackRating,
+    scene: SuperAgentFeedbackScene,
+    artifactKind?: string,
+  ) => {
+    const prevEntry = getTurnFeedback(turnId);
+    const seq = (feedbackSeqRef.current[turnId] ?? 0) + 1;
+    feedbackSeqRef.current[turnId] = seq;
+
+    if (prevEntry?.rating === targetRating) {
+      setLocalTurnFeedback(prev => ({ ...prev, [turnId]: null }));
+      setOpenFeedback(prev => (prev?.turnId === turnId ? null : prev));
+      void Promise.resolve(onRateTurn?.({
+        turnId,
+        rating: 'clear',
+        scene,
+        artifactKind,
+        action: 'clear',
+      })).catch(() => {
+        if (feedbackSeqRef.current[turnId] === seq) {
+          setLocalTurnFeedback(prev => ({ ...prev, [turnId]: prevEntry }));
+        }
+      });
+      return;
+    }
+
+    const nextEntry: SuperAgentTurnFeedback = {
+      rating: targetRating,
+      scene,
+      updatedAt: Date.now(),
+    };
+    setLocalTurnFeedback(prev => ({ ...prev, [turnId]: nextEntry }));
+    setOpenFeedback({
+      turnId,
+      rating: targetRating,
+      scene,
+      artifactKind,
+      reasons: [],
+      note: '',
+      submitting: false,
+    });
+    void Promise.resolve(onRateTurn?.({
+      turnId,
+      rating: targetRating,
+      scene,
+      artifactKind,
+      action: 'rate',
+    })).catch(() => {
+      if (feedbackSeqRef.current[turnId] === seq) {
+        setLocalTurnFeedback(prev => ({ ...prev, [turnId]: prevEntry }));
+        setOpenFeedback(prev => (prev?.turnId === turnId ? null : prev));
+      }
+    });
+  };
+
+  const handleToggleFeedbackReason = (reasonId: SuperAgentFeedbackReason) => {
+    setOpenFeedback(prev => {
+      if (!prev) return prev;
+      const exists = prev.reasons.includes(reasonId);
+      return {
+        ...prev,
+        reasons: exists ? prev.reasons.filter(item => item !== reasonId) : [...prev.reasons, reasonId],
+      };
+    });
+  };
+
+  const handleSubmitTurnFeedbackReason = async () => {
+    if (!openFeedback || openFeedback.submitting) return;
+    const trimmedNote = openFeedback.note.trim();
+    if (openFeedback.reasons.length === 0 && !trimmedNote) return;
+
+    const draft = openFeedback;
+    const prevEntry = getTurnFeedback(draft.turnId);
+    const seq = (feedbackSeqRef.current[draft.turnId] ?? 0) + 1;
+    feedbackSeqRef.current[draft.turnId] = seq;
+
+    const nextEntry: SuperAgentTurnFeedback = {
+      rating: draft.rating,
+      ...(draft.reasons.length ? { reasons: draft.reasons } : {}),
+      ...(trimmedNote ? { note: trimmedNote } : {}),
+      scene: draft.scene,
+      updatedAt: Date.now(),
+    };
+    setOpenFeedback(prev => (prev && prev.turnId === draft.turnId ? { ...prev, submitting: true } : prev));
+    setLocalTurnFeedback(prev => ({ ...prev, [draft.turnId]: nextEntry }));
+    try {
+      await onRateTurn?.({
+        turnId: draft.turnId,
+        rating: draft.rating,
+        reasons: draft.reasons,
+        note: trimmedNote,
+        scene: draft.scene,
+        artifactKind: draft.artifactKind,
+        action: 'update_reason',
+      });
+      if (feedbackSeqRef.current[draft.turnId] === seq) {
+        setOpenFeedback(prev => (prev?.turnId === draft.turnId ? null : prev));
+        onNotify?.(t('Thanks for your feedback'), 'info');
+      }
+    } catch {
+      if (feedbackSeqRef.current[draft.turnId] === seq) {
+        setLocalTurnFeedback(prev => ({ ...prev, [draft.turnId]: prevEntry }));
+        setOpenFeedback(prev => (prev && prev.turnId === draft.turnId ? { ...prev, submitting: false } : prev));
+      }
+    }
+  };
   const turns = useMemo(() => groupMessagesIntoTurns(chat), [chat]);
   const lastTurn = turns[turns.length - 1];
   const showInterruptedCard = !busy && !sending && !chat.error && (
@@ -1886,24 +2099,13 @@ export function ExecutionTimeline({
         return (
           <div key={turn.id} className="om-sa-turn" data-active={isActiveTurn || undefined}>
             {turn.user && (() => {
-              const { contextTags, visibleAttachments } = resolveUserMessageContext(turn.user, t);
-              const hasMetaRow = contextTags.length > 0 || visibleAttachments.length > 0;
+              const visibleAttachments = resolveUserMessageAttachments(turn.user, chat, idx === 0);
+              const sentTime = formatUserMessageTime(turn.user.createdAt, locale);
               return (
                 <article className="om-sa-message" data-role="user">
                   <div className="om-sa-message-body">
-                    {hasMetaRow && (
+                    {visibleAttachments.length > 0 && (
                       <div className="om-sa-msg-attachments">
-                        {contextTags.map((tag, tagIdx) => (
-                          <span
-                            key={`${tag.kind}:${tag.label}:${tagIdx}`}
-                            className="om-sa-context-tag"
-                            data-kind={tag.kind}
-                            data-tone={tag.tone || undefined}
-                          >
-                            {tag.icon && <RemixIcon name={tag.icon} size={13} />}
-                            <span>{tag.label}</span>
-                          </span>
-                        ))}
                         {visibleAttachments.map(att => {
                           const isBrowserAnnotation = att.kind === 'browser-annotation';
                           const chipTitle = isBrowserAnnotation
@@ -1945,6 +2147,15 @@ export function ExecutionTimeline({
                       attachments={turn.user.attachments}
                       onPreviewAttachment={onPreviewAttachment}
                     />
+                    {sentTime && (
+                      <time
+                        className="om-sa-user-time"
+                        dateTime={new Date(turn.user.createdAt).toISOString()}
+                        title={sentTime.full}
+                      >
+                        {sentTime.short}
+                      </time>
+                    )}
                   </div>
                 </article>
               );
@@ -2119,30 +2330,147 @@ export function ExecutionTimeline({
                       ? `${chat.lastTurnUsage.totalTokens.toLocaleString()} ${t('tokens')}`
                       : '';
                     const showInlineTokens = Boolean(tokenDetail && (!chat.intent || chat.intent === 'coding'));
+                    const currentFeedback = getTurnFeedback(turn.id);
+                    const activeRating = currentFeedback?.rating ?? null;
+                    const feedbackScene: SuperAgentFeedbackScene =
+                      chat.intent === 'game'
+                      || turn.artifacts.some(artifact => artifact.kind === 'game-project')
+                      || chat.artifacts.some(artifact => artifact.kind === 'game-project')
+                        ? 'game'
+                        : 'general';
+                    const primaryArtifactKind = deliverableArtifacts[0]?.kind ?? turn.artifacts[0]?.kind;
+                    const isTrayOpen = openFeedback?.turnId === turn.id;
+                    const trayTags = isTrayOpen ? TURN_FEEDBACK_TAGS[openFeedback.scene][openFeedback.rating] : [];
+                    const canSubmitReason = Boolean(
+                      isTrayOpen && !openFeedback.submitting && (openFeedback.reasons.length > 0 || openFeedback.note.trim().length > 0),
+                    );
                     return (
-                      <div className="om-sa-turn-footer">
-                        <span
-                          className="om-sa-turn-meta"
-                          title={!showInlineTokens && tokenDetail ? tokenDetail : undefined}
-                        >
-                          {[
-                            engineLabel || chat.engine,
-                            !isConsumerCreativeTurn && turn.workItems.length > 0 ? t('{count} steps', { count: turn.workItems.length }) : '',
-                            turn.durationMs !== undefined ? formatElapsedDuration(turn.durationMs) : '',
-                            showInlineTokens ? tokenDetail : '',
-                          ].filter(Boolean).join(' · ')}
-                        </span>
-                        {combinedAssistantText && (
-                          <IconButton
-                            variant="ghost"
-                            className="motion-icon-button"
-                            aria-label={t('Copy response')}
-                            title={t('Copy response')}
-                            onClick={() => onCopyText(combinedAssistantText)}
-                            icon={<RemixIcon name="file-copy-line" size={13} />}
-                          />
+                      <>
+                        <div className="om-sa-turn-footer">
+                          <span
+                            className="om-sa-turn-meta"
+                            title={!showInlineTokens && tokenDetail ? tokenDetail : undefined}
+                          >
+                            {[
+                              engineLabel || chat.engine,
+                              !isConsumerCreativeTurn && turn.workItems.length > 0 ? t('{count} steps', { count: turn.workItems.length }) : '',
+                              turn.durationMs !== undefined ? formatElapsedDuration(turn.durationMs) : '',
+                              showInlineTokens ? tokenDetail : '',
+                            ].filter(Boolean).join(' · ')}
+                          </span>
+                          <div className="om-sa-turn-actions" role="group" aria-label={t('Response actions')}>
+                            {combinedAssistantText && (
+                              <IconButton
+                                variant="plain"
+                                className="om-sa-turn-action-btn"
+                                aria-label={t('Copy response')}
+                                title={t('Copy response')}
+                                onClick={() => onCopyText(combinedAssistantText)}
+                                icon={<RemixIcon name="file-copy-line" size={13} />}
+                              />
+                            )}
+                            <IconButton
+                              variant="plain"
+                              className="om-sa-turn-action-btn om-sa-turn-rate-btn"
+                              data-rating="positive"
+                              data-active={activeRating === 'positive' ? 'positive' : undefined}
+                              aria-label={t(activeRating === 'positive' ? 'Remove like' : 'Helpful')}
+                              title={t(activeRating === 'positive' ? 'Remove like' : 'Helpful')}
+                              aria-pressed={activeRating === 'positive'}
+                              onClick={() => handleThumbClick(turn.id, 'positive', feedbackScene, primaryArtifactKind)}
+                              icon={<RemixIcon name={activeRating === 'positive' ? 'thumb-up-fill' : 'thumb-up-line'} size={13} />}
+                            />
+                            <IconButton
+                              variant="plain"
+                              className="om-sa-turn-action-btn om-sa-turn-rate-btn"
+                              data-rating="negative"
+                              data-active={activeRating === 'negative' ? 'negative' : undefined}
+                              aria-label={t(activeRating === 'negative' ? 'Remove dislike' : 'Not helpful')}
+                              title={t(activeRating === 'negative' ? 'Remove dislike' : 'Not helpful')}
+                              aria-pressed={activeRating === 'negative'}
+                              onClick={() => handleThumbClick(turn.id, 'negative', feedbackScene, primaryArtifactKind)}
+                              icon={<RemixIcon name={activeRating === 'negative' ? 'thumb-down-fill' : 'thumb-down-line'} size={13} />}
+                            />
+                          </div>
+                        </div>
+
+                        {isTrayOpen && openFeedback && (
+                          <div
+                            className="om-sa-turn-feedback-card"
+                            data-rating={openFeedback.rating}
+                            role="region"
+                            aria-label={t(openFeedback.rating === 'positive' ? 'What worked well?' : 'What could be better?')}
+                            onKeyDown={event => {
+                              if (event.key === 'Escape') {
+                                event.stopPropagation();
+                                setOpenFeedback(null);
+                              }
+                            }}
+                          >
+                            <div className="om-sa-turn-feedback-head">
+                              <span className="om-sa-turn-feedback-title">
+                                {t(openFeedback.rating === 'positive' ? 'What worked well?' : 'What could be better?')}
+                              </span>
+                              <IconButton
+                                variant="plain"
+                                className="om-sa-turn-feedback-close"
+                                aria-label={t('Close')}
+                                title={t('Close')}
+                                onClick={() => setOpenFeedback(null)}
+                                icon={<RemixIcon name="close-line" size={14} />}
+                              />
+                            </div>
+                            <div className="om-sa-feedback-tags" role="group" aria-label={t('Quick feedback tags')}>
+                              {trayTags.map(tag => {
+                                const selected = openFeedback.reasons.includes(tag.id);
+                                return (
+                                  <Button
+                                    key={tag.id}
+                                    variant="plain"
+                                    type="button"
+                                    className="om-sa-feedback-tag"
+                                    data-tone={openFeedback.rating}
+                                    data-selected={selected || undefined}
+                                    aria-pressed={selected}
+                                    onClick={() => handleToggleFeedbackReason(tag.id)}
+                                  >
+                                    {t(tag.label)}
+                                  </Button>
+                                );
+                              })}
+                            </div>
+                            <div className="om-sa-feedback-input-row">
+                              <input
+                                type="text"
+                                className="om-sa-feedback-note-input"
+                                value={openFeedback.note}
+                                maxLength={500}
+                                aria-label={t('Add a reason (optional)…')}
+                                placeholder={t('Add a reason (optional)…')}
+                                onChange={event => {
+                                  const nextVal = event.target.value;
+                                  setOpenFeedback(prev => (prev && prev.turnId === turn.id ? { ...prev, note: nextVal } : prev));
+                                }}
+                                onKeyDown={event => {
+                                  if (event.key === 'Enter' && !event.nativeEvent.isComposing && canSubmitReason) {
+                                    event.preventDefault();
+                                    void handleSubmitTurnFeedbackReason();
+                                  }
+                                }}
+                              />
+                              <Button
+                                variant="plain"
+                                type="button"
+                                className="om-sa-feedback-submit-btn"
+                                disabled={!canSubmitReason}
+                                onClick={() => void handleSubmitTurnFeedbackReason()}
+                              >
+                                {openFeedback.submitting ? t('Saving…') : t('Submit')}
+                              </Button>
+                            </div>
+                          </div>
                         )}
-                      </div>
+                      </>
                     );
                   })()}
                 </>

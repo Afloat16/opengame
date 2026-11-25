@@ -7,11 +7,15 @@ import {
   type SuperAgentChat,
   type SuperAgentChatSummary,
   type SuperAgentEngine,
+  type SuperAgentFeedbackReason,
+  type SuperAgentFeedbackScene,
   type SuperAgentIntent,
   type SuperAgentModeId,
   type SuperAgentPermissionMode,
   type SuperAgentResourceAttachment,
   type SuperAgentResourceCatalog,
+  type SuperAgentTurnFeedback,
+  type SuperAgentTurnFeedbackAction,
   type SuperAgentTurnInput,
 } from '../../../shared/super-agent';
 import { uploadLibraryAsset } from '../motion/assetClient';
@@ -511,14 +515,28 @@ export function superAgentSessionExportUrl(chatId: string): string {
 
 export async function submitSuperAgentFeedback(input: {
   chatId?: string | null;
-  rating?: 'positive' | 'negative' | 'note';
-  note: string;
+  turnId?: string;
+  rating?: 'positive' | 'negative' | 'note' | 'clear';
+  reasons?: SuperAgentFeedbackReason[];
+  note?: string;
+  scene?: SuperAgentFeedbackScene;
+  artifactKind?: string;
+  action?: SuperAgentTurnFeedbackAction;
   includeLogs?: boolean;
-}): Promise<{ id: string; createdAt: number; filePath: string }> {
-  return saRequest('/feedback', 'POST', {
+}): Promise<{ id: string; createdAt: number; filePath: string; turnFeedback?: SuperAgentTurnFeedback | null }> {
+  const result = await saRequest<{ id: string; createdAt: number; filePath: string; turnFeedback?: SuperAgentTurnFeedback | null }>('/feedback', 'POST', {
     ...(input.chatId ? { chatId: input.chatId } : {}),
+    ...(input.turnId ? { turnId: input.turnId } : {}),
     rating: input.rating ?? 'note',
-    note: input.note,
-    includeLogs: input.includeLogs !== false,
+    ...(input.reasons?.length ? { reasons: input.reasons } : {}),
+    note: input.note ?? '',
+    ...(input.scene ? { scene: input.scene } : {}),
+    ...(input.artifactKind ? { artifactKind: input.artifactKind } : {}),
+    ...(input.action ? { action: input.action } : {}),
+    ...(input.includeLogs !== undefined ? { includeLogs: input.includeLogs } : input.turnId ? {} : { includeLogs: true }),
   });
+  if (input.chatId && input.turnId) {
+    chatCache.delete(input.chatId);
+  }
+  return result;
 }

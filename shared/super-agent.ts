@@ -395,11 +395,47 @@ export type SuperAgentQueuedMessage = {
 };
 
 export type SuperAgentFeedbackRating = 'positive' | 'negative' | 'note';
+export type SuperAgentTurnFeedbackRating = 'positive' | 'negative';
+export type SuperAgentFeedbackScene = 'game' | 'general';
+export type SuperAgentTurnFeedbackAction = 'rate' | 'update_reason' | 'clear';
+
+export const SUPER_AGENT_FEEDBACK_REASONS = [
+  'game_fun',
+  'game_great_visuals',
+  'game_smooth_controls',
+  'game_matches_request',
+  'game_not_fun',
+  'game_weak_visuals',
+  'game_clunky_controls',
+  'game_buggy_or_broken',
+  'game_missed_request',
+  'great_result',
+  'matches_request',
+  'fast_delivery',
+  'clear_and_helpful',
+  'missed_request',
+  'low_quality',
+  'broken_or_error',
+  'too_slow_or_off_track',
+] as const;
+
+export type SuperAgentFeedbackReason = (typeof SUPER_AGENT_FEEDBACK_REASONS)[number];
+
+export type SuperAgentTurnFeedback = {
+  rating: SuperAgentTurnFeedbackRating;
+  reasons?: SuperAgentFeedbackReason[];
+  note?: string;
+  scene?: SuperAgentFeedbackScene;
+  updatedAt: number;
+};
 
 export type SuperAgentFeedbackEntry = {
   id: string;
+  turnId?: string;
   rating: SuperAgentFeedbackRating;
+  reasons?: SuperAgentFeedbackReason[];
   note: string;
+  scene?: SuperAgentFeedbackScene;
   includeLogs?: boolean;
   createdAt: number;
 };
@@ -413,6 +449,7 @@ export type SuperAgentChat = {
   projectDir?: string;
   projectKind?: SuperAgentProjectKind;
   turnChangedFiles?: Record<string, SuperAgentFileOperation[]>;
+  turnFeedback?: Record<string, SuperAgentTurnFeedback>;
   pinned?: boolean;
   runtimeId?: string;
   engine: SuperAgentEngine;

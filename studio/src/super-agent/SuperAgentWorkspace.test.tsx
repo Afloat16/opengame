@@ -4327,10 +4327,10 @@ it('keeps Skill handoff instructions out of visible user messages and renders hu
   expect(userBubble?.textContent).not.toContain('openmotion-game Skill');
   expect(userBubble?.textContent).not.toContain('openmotion://workflow/game/start');
 
-  // Mode + parameter tags render cleanly above the user bubble, while duplicate draft game chip is suppressed
-  const tagLabels = [...container.querySelectorAll('.om-sa-context-tag')].map(el => el.textContent?.trim());
-  expect(tagLabels).toEqual(['Game', 'Casual', '9:16', 'Single player']);
-  expect(container.querySelectorAll('.om-sa-msg-attachments .om-sa-attachment-chip').length).toBe(0);
+  // Backend still receives contextTags for chat presentation, while the user bubble stays clean without metadata pills or draft game chips
+  expect(turnBody?.contextTags?.map((tag: any) => tag.label)).toEqual(['Game', 'Casual', '9:16', 'Single player']);
+  expect(container.querySelectorAll('.om-sa-context-tag').length).toBe(0);
+  expect(container.querySelector('.om-sa-message[data-role="user"] .om-sa-msg-attachments')).toBeNull();
 
   // Approval card renders plain-language summary + target chip, with technical details collapsed by default
   const approvalCard = container.querySelector('.om-sa-approval')!;
@@ -8096,11 +8096,19 @@ it('switches Agent, model, thinking level across Antigravity/Claude/Codex and bo
   const thinkingOptions = [...document.querySelectorAll('.om-sa-model-thinking-option')].map(el => el.textContent?.trim());
   expect(thinkingOptions).toEqual(['Default', 'Low', 'Medium', 'High', 'Extra']);
 
-  // Bookmark Gemini 4 Neon for Favorites tab
-  const favBtn = document.querySelector<HTMLButtonElement>('.om-sa-model-row[data-active] .om-sa-model-fav-btn')!;
-  expect(favBtn).toBeTruthy();
-  await act(async () => favBtn.click());
+  // Open Favorites tab while empty -> one-click CTA bookmarks the active model (Gemini 4 Neon)
+  const favTabInitial = document.querySelector<HTMLButtonElement>('.om-sa-model-rail-btn[aria-label="Favorites"]')!;
+  expect(favTabInitial).toBeTruthy();
+  await act(async () => favTabInitial.click());
   await flush();
+  const emptyBookmarkCta = document.querySelector<HTMLButtonElement>('.om-sa-model-empty-cta')!;
+  expect(emptyBookmarkCta).toBeTruthy();
+  expect(emptyBookmarkCta.textContent).toContain('Bookmark Gemini 4 Neon');
+  await act(async () => emptyBookmarkCta.click());
+  await flush();
+  expect(document.querySelector('.om-sa-model-empty-cta')).toBeNull();
+  expect(document.querySelector('.om-sa-model-row-main')?.textContent).toContain('Gemini 4 Neon');
+  expect(document.querySelector<HTMLButtonElement>('.om-sa-model-fav-btn')?.getAttribute('title')).toBe('Remove from favorites');
 
   // Switch left rail to Claude Code, search "Opus", pick Claude Opus 4.6 -> preserves compatible 'high' thinking level
   const claudeTab = document.querySelector<HTMLButtonElement>('.om-sa-model-rail-btn[aria-label="Claude Code"]')!;

@@ -278,8 +278,10 @@ export function AgentModelPicker({
   const activeRailChoice = !isFavoritesTab
     ? engineChoices.find(item => item.id === activeTab) ?? engineChoices.find(item => item.id === browsingEngine) ?? engineChoices[0]
     : undefined;
+  const currentEngineChoice = engineChoices.find(item => item.id === selection.engine);
 
   const query = search.trim().toLowerCase();
+  const canBookmarkCurrent = Boolean(!query && currentEngineChoice?.ready && selectedModelMeta);
 
   // Favorites / Cross-agent model entries when viewing Favorites tab
   const favoriteRows = useMemo(() => {
@@ -516,6 +518,17 @@ export function AgentModelPicker({
                         ? t('No matching models')
                         : t('Bookmark models to switch across Agents in one click.')}
                     </p>
+                    {canBookmarkCurrent && selectedModelMeta && (
+                      <Button
+                        variant="plain"
+                        type="button"
+                        className="om-sa-model-empty-cta"
+                        onClick={() => toggleFavorite(selection.engine, selectedModelMeta.id)}
+                      >
+                        <RemixIcon name="bookmark-line" size={13} />
+                        <span>{t('Bookmark {model}', { model: selectedModelMeta.label })}</span>
+                      </Button>
+                    )}
                   </div>
                 ) : (
                   favoriteRows.map(({ choice, model }) => {
@@ -556,6 +569,7 @@ export function AgentModelPicker({
                             className="om-sa-model-fav-btn"
                             data-favorited={isFav || undefined}
                             aria-label={t(isFav ? 'Remove from favorites' : 'Add to favorites')}
+                            title={t(isFav ? 'Remove from favorites' : 'Add to favorites')}
                             aria-pressed={isFav}
                             onClick={event => {
                               event.stopPropagation();
@@ -695,6 +709,7 @@ export function AgentModelPicker({
                                 className="om-sa-model-fav-btn"
                                 data-favorited={isFav || undefined}
                                 aria-label={t(isFav ? 'Remove from favorites' : 'Add to favorites')}
+                                title={t(isFav ? 'Remove from favorites' : 'Add to favorites')}
                                 aria-pressed={isFav}
                                 onClick={event => {
                                   event.stopPropagation();

@@ -33,6 +33,29 @@ const mediaGenerationDimensions = {
 const superAgentRuntimeKinds = ['local-direct', 'local-bridge', 'remote-service'] as const;
 const superAgentIntents = ['chat', 'coding', 'design', 'research', 'visualization', 'image', 'video', 'audio', 'game', 'website', 'slides', 'brand', 'other'] as const;
 const superAgentApprovalKinds = ['generation', 'command', 'file', 'tool', 'other'] as const;
+export const superAgentFeedbackReasons = [
+  'game_fun',
+  'game_great_visuals',
+  'game_smooth_controls',
+  'game_matches_request',
+  'game_not_fun',
+  'game_weak_visuals',
+  'game_clunky_controls',
+  'game_buggy_or_broken',
+  'game_missed_request',
+  'great_result',
+  'matches_request',
+  'fast_delivery',
+  'clear_and_helpful',
+  'missed_request',
+  'low_quality',
+  'broken_or_error',
+  'too_slow_or_off_track',
+] as const;
+const superAgentFeedbackArtifactKinds = [
+  'game-project', 'design-project', 'motion-project', 'motion-export',
+  'asset-image', 'asset-video', 'asset-audio', 'brand-kit', 'web', 'file', 'other',
+] as const;
 const scenarioStepStatuses = ['todo', 'in-progress', 'done', 'skipped'] as const;
 // Studio project ids are UUIDs except the built-in local project, whose id is the literal `project`.
 const project = { project_id: 'project_id', project_scope: ['default', 'managed', 'other'] } as const;
@@ -175,6 +198,21 @@ export const omEvents = {
     runtime_kind: superAgentRuntimeKinds, approval_kind: superAgentApprovalKinds,
     decision: ['approved', 'rejected'], always_allow: 'boolean', wait_ms: 'integer',
   }, required: ['runtime_kind', 'approval_kind', 'decision', 'always_allow', 'wait_ms'] },
+  // Committed per-turn thumbs up/down feedback. Closed reason tags only; raw notes never leave the machine.
+  super_agent_turn_feedback: { producers: ['worker'], fields: {
+    runtime_kind: superAgentRuntimeKinds, engine: 'slug', model_id: 'model_id',
+    intent: superAgentIntents, feedback_scene: ['game', 'general'],
+    action: ['rate', 'update_reason', 'clear'],
+    rating: ['positive', 'negative', 'none'],
+    previous_rating: ['positive', 'negative', 'none'],
+    primary_reason: superAgentFeedbackReasons,
+    reason_tags: 'code',
+    reason_count: 'integer',
+    has_note: 'boolean',
+    note_length: 'integer',
+    has_artifact: 'boolean',
+    artifact_kind: superAgentFeedbackArtifactKinds,
+  }, required: ['runtime_kind', 'engine', 'intent', 'feedback_scene', 'action', 'rating', 'previous_rating', 'reason_count', 'has_note', 'has_artifact'] },
   // Terminal Scenario Workflow run and step milestones. No briefs, titles or prompt text.
   scenario_run_result: { producers: ['worker'], fields: {
     scenario_id: 'slug', action: ['create', 'archive', 'unarchive', 'export'],
