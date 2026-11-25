@@ -301,14 +301,16 @@ openmotion-game を使って、霧深い夕暮れの竹林の崖を舞台にし�
 本格的なゲームにはコードだけでなく、キーアート、立ち絵・スプライト、シームレス 3D テクスチャ、BGM ループ、キャラクターボイス、効果音が必要です。OpenGame の **Model Gateway** はマルチモーダル生成をゲーム制作パイプラインへ直接統合しつつ、API キーをローカル環境内に安全に分離します。
 
 <p>
-  <img src="readme/models/codex.svg" width="148" alt="Codex Image">
+  <img src="readme/opengame/models/gpt-image.svg" width="148" alt="GPT Image">
+  <img src="readme/opengame/models/seedream.svg" width="148" alt="Seedream">
   <img src="readme/models/nano-banana.svg" width="148" alt="Nano Banana 2">
   <img src="readme/models/flux.svg" width="148" alt="FLUX">
-  <img src="readme/models/seedance.svg" width="148" alt="Seedance"><br>
+  <img src="readme/models/codex.svg" width="148" alt="Codex Image"><br>
+  <img src="readme/models/seedance.svg" width="148" alt="Seedance">
   <img src="readme/models/wan.svg" width="148" alt="Wan">
   <img src="readme/models/suno.svg" width="148" alt="Suno">
   <img src="readme/models/elevenlabs.svg" width="148" alt="ElevenLabs">
-  <img src="readme/models/kokoro.svg" width="148" alt="Kokoro">
+  <img src="readme/opengame/models/byteplus.svg" width="148" alt="BytePlus Voice">
 </p>
 
 | ゲーム素材レイヤー | 推奨モデル（Model Gateway 設定時に自動検出） | API キー不要の標準フォールバック |

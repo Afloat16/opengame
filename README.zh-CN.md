@@ -301,14 +301,16 @@ OpenGame 在 [`templates/games/`](templates/games/) 中内置了 **26 款开箱�
 一款完整的游戏离不开主视觉、角色立绘、3D 无缝贴图、背景音乐、角色配音和清脆音效。OpenGame 通过内置 **Model Gateway** 将多模态生成直接接入游戏工程，同时让 API Key 留在本地工作区，不写入游戏源码。
 
 <p>
-  <img src="docs/readme/models/codex.svg" width="148" alt="Codex Image">
+  <img src="docs/readme/opengame/models/gpt-image.svg" width="148" alt="GPT Image">
+  <img src="docs/readme/opengame/models/seedream.svg" width="148" alt="Seedream">
   <img src="docs/readme/models/nano-banana.svg" width="148" alt="Nano Banana 2">
   <img src="docs/readme/models/flux.svg" width="148" alt="FLUX">
-  <img src="docs/readme/models/seedance.svg" width="148" alt="Seedance"><br>
+  <img src="docs/readme/models/codex.svg" width="148" alt="Codex Image"><br>
+  <img src="docs/readme/models/seedance.svg" width="148" alt="Seedance">
   <img src="docs/readme/models/wan.svg" width="148" alt="Wan">
   <img src="docs/readme/models/suno.svg" width="148" alt="Suno">
   <img src="docs/readme/models/elevenlabs.svg" width="148" alt="ElevenLabs">
-  <img src="docs/readme/models/kokoro.svg" width="148" alt="Kokoro">
+  <img src="docs/readme/opengame/models/byteplus.svg" width="148" alt="BytePlus Voice">
 </p>
 
 | 游戏素材层 | 推荐模型（在 Model Settings 配置后自动发现） | 零 Key / 代码内建降级方案 |

@@ -301,14 +301,16 @@ Use openmotion-game to create a 3D wuxia boss-duel game (style: "3d") set on a m
 A real game needs more than code — it needs key art, character sprites, seamless 3D textures, music loops, voice lines, and crisp sound effects. OpenGame's **Model Gateway** wires multimodal generation directly into the game project while keeping your API keys local and separate from game source.
 
 <p>
-  <img src="docs/readme/models/codex.svg" width="148" alt="Codex Image">
+  <img src="docs/readme/opengame/models/gpt-image.svg" width="148" alt="GPT Image">
+  <img src="docs/readme/opengame/models/seedream.svg" width="148" alt="Seedream">
   <img src="docs/readme/models/nano-banana.svg" width="148" alt="Nano Banana 2">
   <img src="docs/readme/models/flux.svg" width="148" alt="FLUX">
-  <img src="docs/readme/models/seedance.svg" width="148" alt="Seedance"><br>
+  <img src="docs/readme/models/codex.svg" width="148" alt="Codex Image"><br>
+  <img src="docs/readme/models/seedance.svg" width="148" alt="Seedance">
   <img src="docs/readme/models/wan.svg" width="148" alt="Wan">
   <img src="docs/readme/models/suno.svg" width="148" alt="Suno">
   <img src="docs/readme/models/elevenlabs.svg" width="148" alt="ElevenLabs">
-  <img src="docs/readme/models/kokoro.svg" width="148" alt="Kokoro">
+  <img src="docs/readme/opengame/models/byteplus.svg" width="148" alt="BytePlus Voice">
 </p>
 
 | Game Asset Layer | Recommended Models (when configured in Model Gateway) | Zero-Key / Built-in Fallback |
