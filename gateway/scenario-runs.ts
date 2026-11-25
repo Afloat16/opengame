@@ -30,7 +30,16 @@ import {
   type ScenarioStepDefinition,
 } from '../shared/scenarios.ts';
 import type { WorkspaceStore } from '../workspace.ts';
+import type { OmTracking } from '../shared/tracking.ts';
+import { slug } from '../tracking/core.ts';
 import { BundleBuildError, buildScenarioBundle } from './scenario-bundle.ts';
+
+function safeScenarioSlug(value: string): string {
+  return slug.test(value) ? value : 'other';
+}
+function countCompletedSteps(run: ScenarioRun): number {
+  return Object.values(run.steps).filter(step => step.status === 'done').length;
+}
 
 export type ScenarioErrorCode =
   | 'INVALID_ARGUMENT'
@@ -320,10 +329,12 @@ export class ScenarioRuns {
   private readonly bundlesDir: string;
   private readonly lockPath: string;
   private store?: WorkspaceStore;
+  private tracking?: OmTracking;
 
-  constructor(dataDirectory: string, store?: WorkspaceStore) {
+  constructor(dataDirectory: string, store?: WorkspaceStore, tracking?: OmTracking) {
     this.dataDirectory = path.resolve(dataDirectory);
     this.store = store;
+    this.tracking = tracking;
     this.root = path.join(this.dataDirectory, 'scenarios');
     this.runsDir = path.join(this.root, 'runs');
     this.requestsDir = path.join(this.root, 'requests');
@@ -333,6 +344,43 @@ export class ScenarioRuns {
 
   setStore(store: WorkspaceStore) {
     this.store = store;
+  }
+
+  setTracking(tracking?: OmTracking) {
+    if (tracking) this.tracking = tracking;
+  }
+
+  private trackRun(
+    run: ScenarioRun,
+    action: 'create' | 'archive' | 'unarchive' | 'export',
+    outcome: 'success' | 'failure',
+    durationMs?: number,
+  ) {
+    this.tracking?.track('scenario_run_result', {
+      scenario_id: safeScenarioSlug(run.scenarioId),
+      action,
+      outcome,
+      completed_step_count: countCompletedSteps(run),
+      total_step_count: Object.keys(run.steps).length,
+      pool_item_count: run.pool.length,
+      ...(durationMs !== undefined ? { duration_ms: Math.min(86_400_000, Math.max(0, Math.round(durationMs))) } : {}),
+    }, undefined, 'worker');
+  }
+
+  private trackStep(
+    scenarioId: string,
+    stepId: string,
+    action: 'status_change' | 'generate' | 'create_page' | 'create_motion' | 'link_design' | 'link_motion' | 'add_iteration',
+    outcome: 'success' | 'failure',
+    stepStatus?: ScenarioStepState['status'],
+  ) {
+    this.tracking?.track('scenario_step_result', {
+      scenario_id: safeScenarioSlug(scenarioId),
+      step_id: safeScenarioSlug(stepId),
+      action,
+      ...(stepStatus ? { step_status: stepStatus } : {}),
+      outcome,
+    }, undefined, 'worker');
   }
 
   private async ensureDirs() {
@@ -500,6 +548,7 @@ export class ScenarioRuns {
     expectedRevision: number,
     inputForHash: unknown,
     mutate: (run: ScenarioRun, scenario: ScenarioDefinition) => T | Promise<T>,
+    onCommitted?: (run: ScenarioRun, result: T) => void,
   ): Promise<T> {
     const id = validateUuid(runId, 'runId');
     const rid = validateRequestId(requestId);
@@ -518,6 +567,7 @@ export class ScenarioRuns {
         ? { ...(result as Record<string, unknown>), run: computeDefaultBindings(run, scenario) } as T
         : result;
       await this.writeReceipt(scope, rid, inputHash, hydrated);
+      onCommitted?.(run, hydrated);
       return hydrated;
     });
   }
@@ -530,7 +580,7 @@ export class ScenarioRuns {
     inputForHash: unknown,
     prepareAndExecute: (run: ScenarioRun, scenario: ScenarioDefinition) => Promise<S>,
     commit: (run: ScenarioRun, scenario: ScenarioDefinition, sideEffectResult: S) => T | Promise<T>,
-    options?: { adoptOnConflict?: boolean },
+    options?: { adoptOnConflict?: boolean; onCommitted?: (run: ScenarioRun, result: T) => void },
   ): Promise<T> {
     const id = validateUuid(runId, 'runId');
     const rid = validateRequestId(requestId);
@@ -565,6 +615,7 @@ export class ScenarioRuns {
         ? { ...(result as Record<string, unknown>), run: computeDefaultBindings(latest, scenario) } as T
         : result;
       await this.writeReceipt(scope, rid, inputHash, hydrated);
+      options?.onCommitted?.(latest, hydrated);
       return hydrated;
     });
   }
@@ -670,6 +721,7 @@ export class ScenarioRuns {
       await this.saveRun(run);
       const result = { run: computeDefaultBindings(run, scenario) };
       await this.writeReceipt('create', rid, inputHash, result);
+      this.trackRun(run, 'create', 'success');
       return result;
     });
   }
@@ -694,12 +746,19 @@ export class ScenarioRuns {
       { expectedRevision: input.expectedRevision, changes },
       (run, scenario) => {
         if (title !== undefined) run.title = title;
-        if (changes.archived !== undefined) run.archivedAt = changes.archived ? Date.now() : null;
+        if (changes.archived !== undefined) {
+          run.archivedAt = changes.archived ? Date.now() : null;
+        }
         if (changes.activeStepId !== undefined) {
           this.requireStep(scenario, changes.activeStepId);
           run.activeStepId = changes.activeStepId;
         }
         return { run };
+      },
+      run => {
+        if (changes.archived !== undefined) {
+          this.trackRun(run, changes.archived ? 'archive' : 'unarchive', 'success');
+        }
       },
     );
   }
@@ -805,6 +864,11 @@ export class ScenarioRuns {
           iter.note = input.iterationNote.note.trim();
         }
         return { run };
+      },
+      run => {
+        if (input.status !== undefined) {
+          this.trackStep(run.scenarioId, input.stepId, 'status_change', 'success', run.steps[input.stepId]?.status);
+        }
       },
     );
   }
@@ -1091,6 +1155,9 @@ export class ScenarioRuns {
         }
         return { run, iteration: created };
       },
+      run => {
+        this.trackStep(run.scenarioId, input.stepId, 'add_iteration', 'success', run.steps[input.stepId]?.status);
+      },
     );
   }
 
@@ -1198,7 +1265,12 @@ export class ScenarioRuns {
         if (step.status === 'todo') step.status = 'in-progress';
         return { run, job, iteration };
       },
-      { adoptOnConflict: true },
+      {
+        adoptOnConflict: true,
+        onCommitted: run => {
+          this.trackStep(run.scenarioId, input.stepId, 'generate', 'success', run.steps[input.stepId]?.status);
+        },
+      },
     );
   }
 
@@ -1466,6 +1538,11 @@ export class ScenarioRuns {
         if (step.status === 'todo') step.status = 'in-progress';
         return { run, project };
       },
+      {
+        onCommitted: run => {
+          this.trackStep(run.scenarioId, input.stepId, 'create_page', 'success', run.steps[input.stepId]?.status);
+        },
+      },
     );
   }
 
@@ -1631,6 +1708,11 @@ export class ScenarioRuns {
         if (step.status === 'todo') step.status = 'in-progress';
         return { run, project };
       },
+      {
+        onCommitted: run => {
+          this.trackStep(run.scenarioId, input.stepId, 'link_design', 'success', run.steps[input.stepId]?.status);
+        },
+      },
     );
   }
 
@@ -1724,6 +1806,11 @@ export class ScenarioRuns {
         if (step.status === 'todo') step.status = 'in-progress';
         return { run, project };
       },
+      {
+        onCommitted: run => {
+          this.trackStep(run.scenarioId, input.stepId, 'create_motion', 'success', run.steps[input.stepId]?.status);
+        },
+      },
     );
   }
 
@@ -1764,6 +1851,11 @@ export class ScenarioRuns {
         if (step.status === 'todo') step.status = 'in-progress';
         return { run };
       },
+      {
+        onCommitted: run => {
+          this.trackStep(run.scenarioId, input.stepId, 'link_motion', 'success', run.steps[input.stepId]?.status);
+        },
+      },
     );
   }
 
@@ -1782,6 +1874,7 @@ export class ScenarioRuns {
   ): Promise<{ bundle: ScenarioBundleReceipt }> {
     const run = await this.readRunRaw(validateUuid(input.runId, 'runId'));
     const scenario = this.requireScenario(run.scenarioId);
+    const startedAt = Date.now();
     try {
       const bundle = await buildScenarioBundle(this.dataDirectory, host, run, scenario, {
         requestId: input.requestId,
@@ -1792,8 +1885,10 @@ export class ScenarioRuns {
         includeStandaloneHtml: input.includeStandaloneHtml,
         includeMotionSource: input.includeMotionSource,
       });
+      this.trackRun(run, 'export', 'success', Date.now() - startedAt);
       return { bundle };
     } catch (error) {
+      this.trackRun(run, 'export', 'failure', Date.now() - startedAt);
       if (error instanceof BundleBuildError) {
         throw new ScenarioError(error.code, error.message.replace(/^[A-Z_]+:\s*/, ''));
       }
@@ -1804,15 +1899,16 @@ export class ScenarioRuns {
 
 const runsByDir = new Map<string, ScenarioRuns>();
 
-export function scenarioRunsFor(store: WorkspaceStore): ScenarioRuns {
+export function scenarioRunsFor(store: WorkspaceStore, tracking?: OmTracking): ScenarioRuns {
   const rootStore = store.workspaceStore ?? store;
   const key = path.resolve(rootStore.directory);
   let instance = runsByDir.get(key);
   if (!instance) {
-    instance = new ScenarioRuns(key, rootStore);
+    instance = new ScenarioRuns(key, rootStore, tracking);
     runsByDir.set(key, instance);
   } else {
     instance.setStore(rootStore);
+    instance.setTracking(tracking);
   }
   return instance;
 }
