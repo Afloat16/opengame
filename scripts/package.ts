@@ -24,7 +24,17 @@ async function main() {
   const { check } = await import('./check.ts');
   await check();
   const manifest = JSON.parse(await readFile(path.join(root, '.codex-plugin/plugin.json'), 'utf8'));
-  const files = await distributionFiles(profile);
+  const { buildGameTemplateBundles, offlineGame } = await import('./game-template-publication.ts');
+  const gameCards = new Set<string>();
+  const gamesRoot = path.join(root, 'templates/games');
+  const games = await buildGameTemplateBundles(gamesRoot);
+  for (const id of Object.keys(games)) {
+    const prefix = `templates/games/${id}/`;
+    const card = JSON.parse(await readFile(path.join(gamesRoot, id, 'game.json'), 'utf8'));
+    gameCards.add(prefix + 'game.json');
+    if (card.cover && !/^(?:[a-z]+:|\/)/i.test(card.cover)) gameCards.add(prefix + card.cover);
+  }
+  const files = await distributionFiles(profile, file => !file.startsWith('templates/games/') || file.startsWith(`templates/games/${offlineGame}/`) || gameCards.has(file));
   await requireDownloadedMedia(files);
   let commit: string | null;
   try { commit = execFileSync('git', ['rev-parse', 'HEAD'], { cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] }).trim(); }
@@ -33,6 +43,7 @@ async function main() {
     'shared/build-info.json': { commit } };
   const entries = await Promise.all(files.sort().map(async file => ({ name: manifest.name + '/' + file,
     data: overrides[file] ? Buffer.from(JSON.stringify(overrides[file], null, 2) + '\n') : await readFile(path.join(root, file)) })));
+  entries.push({ name: manifest.name + '/templates/game-downloads.json', data: Buffer.from(JSON.stringify({ schemaVersion: 1, games }, null, 2) + '\n') });
   await mkdir(path.join(root, 'dist'), { recursive: true });
   const output = `dist/${manifest.name}-${manifest.version}${profile === 'legacy' ? '' : '-' + profile}${templateConfig.environment === 'dev' ? '-dev' : ''}.zip`;
   await (await import('node:fs/promises')).writeFile(path.join(root, output), zip(entries));
