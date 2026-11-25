@@ -114,6 +114,13 @@ export type GameRemixOptions = {
   orientation?: 'landscape' | 'portrait' | null;
 };
 
+/** True when a game is a complete, playable built-in local template eligible for zero-rebuild remix delivery. */
+export function isReadyBuiltInTemplate(
+  game: Pick<GameCard, 'source' | 'status'> & { external?: unknown },
+): boolean {
+  return !game.external && game.source === 'template' && (game.status === 'ready' || game.status === 'published');
+}
+
 const PORTRAIT_BRIEF_MARKER = 'Layout: portrait 9:16 phone game.';
 const PORTRAIT_BRIEF_SUFFIX = `${PORTRAIT_BRIEF_MARKER} Design every screen, HUD and control for a phone held upright (390×844); in a landscape window, centre the 9:16 play area and letterbox the sides.`;
 const PLAYABLE_AD_BRIEF_MARKER = 'Format: playable ad. Follow the playable-ad recipe';

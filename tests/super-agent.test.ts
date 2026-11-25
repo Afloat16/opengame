@@ -1138,6 +1138,101 @@ test('game generation suppresses premature starter-kit artifacts during building
   await serviceB.close();
 }));
 
+test('built-in template zero-rebuild delivery presents game artifact immediately and preserves localized title across concurrent set_status', () => fixture(async store => {
+  const games = gameProjectsFor(store.directory);
+  const remixed = await games.remix('ball-match');
+  assert.equal(remixed.game.title, 'Jelly Ball Chain Pop');
+  assert.equal(remixed.game.status, 'draft');
+
+  const phase1 = {
+    call: async (name: string, args: Record<string, unknown>) => {
+      if (name === 'openmotion_game_set_status') {
+        return games.status(String(args.id), args.status);
+      }
+      throw new Error(`Unexpected tool in zero-rebuild delivery: ${name}`);
+    },
+  } as unknown as Phase1Service;
+
+  const toolCalls: string[] = [];
+  class InstantTemplateDeliveryRpc {
+    onNotification: (msg: any) => void;
+    constructor(_bin: string, _cwd: string, onNotification: (msg: any) => void) {
+      this.onNotification = onNotification;
+    }
+    async request(method: string) {
+      if (method === 'initialize') return { serverInfo: { name: 'mock-codex' } };
+      if (method === 'thread/start') return { thread: { id: 'thread-instant-template' } };
+      if (method === 'turn/start') {
+        setTimeout(() => {
+          // Present with localized title first, then transition status to ready — title must not be clobbered back to English.
+          this.onNotification({
+            id: 401,
+            method: 'item/tool/call',
+            params: {
+              callId: 'tpl-1',
+              tool: 'openmotion_present_artifact',
+              arguments: { kind: 'game-project', projectId: remixed.game.id, title: '弹珠连线爆爆乐' },
+            },
+          });
+        }, 5);
+        return { turn: { id: 'turn-instant-template' } };
+      }
+      return {};
+    }
+    send(payload: any) {
+      if (payload.id === 401) {
+        toolCalls.push('present_artifact');
+        this.onNotification({
+          id: 402,
+          method: 'item/tool/call',
+          params: {
+            callId: 'tpl-2',
+            tool: 'openmotion_game_set_status',
+            arguments: { id: remixed.game.id, status: 'ready' },
+          },
+        });
+      } else if (payload.id === 402) {
+        toolCalls.push('set_status');
+        this.onNotification({
+          method: 'turn/completed',
+          params: { turn: { id: 'turn-instant-template', status: 'completed' } },
+        });
+      }
+    }
+    close() {}
+  }
+
+  const service = new SuperAgentConversations(store, {
+    resolve: async () => '/usr/local/bin/codex',
+    rpc: InstantTemplateDeliveryRpc as unknown as typeof AssetAgentRpc,
+  });
+  const chat = await service.create({ engine: 'codex', intent: 'game', permissionMode: 'auto' });
+  await service.start(chat.id, {
+    requestId: 'req-instant-tpl',
+    mode: 'game',
+    text: '做同款 · 弹珠连线爆爆乐',
+  }, {
+    origin: 'http://127.0.0.1:4173',
+    phase1: () => phase1,
+  });
+
+  for (let i = 0; i < 80; i++) {
+    const snap = await service.get(chat.id);
+    if (snap.state === 'idle' || snap.state === 'failed') break;
+    await new Promise(resolve => setTimeout(resolve, 15));
+  }
+
+  const done = await service.get(chat.id);
+  assert.equal(done.state, 'idle');
+  assert.deepEqual(toolCalls, ['present_artifact', 'set_status']);
+  assert.equal((await games.get(remixed.game.id)).status, 'ready');
+  assert.equal(done.activeArtifactId, `game:${remixed.game.id}`);
+  const art = done.artifacts.find(item => item.id === `game:${remixed.game.id}`);
+  assert.ok(art);
+  assert.equal(art.title, '弹珠连线爆爆乐');
+  await service.close();
+}));
+
 test('extractLocalDevServerUrl, annotation image persistence, and lean Coding prompt injection', () => fixture(async store => {
   assert.equal(
     extractLocalDevServerUrl('  VITE v6.0 ready\n  ➜  Local:   http://localhost:5173/dashboard\n', 'http://127.0.0.1:4173'),
@@ -2072,6 +2167,10 @@ test('Codex and Claude Super Agent prompts share unified gameAssetInstructions w
     assert.ok(prompt.includes(gameAssetInstructions), 'Super Agent prompt must embed gameAssetInstructions');
     assert.doesNotMatch(prompt, /optionally generate visual/i);
     assert.doesNotMatch(prompt, /openmotion_generate_asset/);
+    assert.match(prompt, /Built-in template remix fast path/);
+    assert.match(prompt, /deliver immediately with zero rebuild/);
+    assert.match(prompt, /never say you copied a template/i);
+    assert.match(prompt, /edit the existing files in place/);
   }
 });
 

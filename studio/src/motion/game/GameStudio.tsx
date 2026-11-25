@@ -2,7 +2,7 @@ import { Button } from 'open-design-ui/button';
 import { IconButton } from 'open-design-ui/icon-button';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { gameGenres, gameSettings, gameStyles, type GameCard, type GameCreated, type GameGenre, type GameSetting, type GameStyle } from '../../../../shared/game-contract';
+import { gameGenres, gameSettings, gameStyles, isReadyBuiltInTemplate, type GameCard, type GameCreated, type GameGenre, type GameSetting, type GameStyle } from '../../../../shared/game-contract';
 import { rankSearchResults } from '../../../../shared/fuzzy-search';
 import { buildSuperAgentHandoff } from '../../../../shared/capability-hub';
 import { preservePresentation } from '../../../../shared/workspace-url';
@@ -144,7 +144,10 @@ export function GameStudio({
   const failure = (error: unknown) => error instanceof TypeError || offline
     ? t('The local game service is not available. Update OpenMotion and try again.')
     : t('The game could not be created: {reason}', { reason: (error as Error).message });
-  const started = (created: GameCreated): 'super_agent' | 'detail' => {
+  const started = (
+    created: GameCreated,
+    options?: { builtInTemplateRemix?: boolean },
+  ): 'super_agent' | 'detail' => {
     rememberInstruction(created.game.id, created.agentInstruction);
     statuses.current.set(created.game.id, created.game.status);
     setGames(list => [created.game, ...list.filter(game => game.id !== created.game.id)]);
@@ -154,7 +157,14 @@ export function GameStudio({
       setOpenIdState(null);
       const handoff = buildSuperAgentHandoff(toGameCapabilityRef(created.game, displayTitle), {
         prompt: buildGameUserPrompt(created.game, locale),
-        hiddenInstructions: buildGameHiddenInstructions(created.game, created.agentInstruction),
+        hiddenInstructions: buildGameHiddenInstructions(
+          created.game,
+          created.agentInstruction,
+          undefined,
+          options?.builtInTemplateRemix
+            ? { builtInTemplateRemix: true, hasUserPromptText: false, locale }
+            : undefined,
+        ),
         contextTags: buildGameContextTags(created.game, t),
         locale,
         newChat: true,
@@ -215,7 +225,8 @@ export function GameStudio({
       const created = game.external
         ? await gameApi.create({ prompt: communityRemixPrompt(game), genre: game.genre, style: game.style, setting: game.setting, multiplayer: false, orientation: game.orientation ?? 'landscape' })
         : await gameApi.remix(game.id);
-      reportGameCreate('remix', { game: created.game, handoff: started(created) }, { source: game });
+      const builtInTemplateRemix = isReadyBuiltInTemplate(game);
+      reportGameCreate('remix', { game: created.game, handoff: started(created, { builtInTemplateRemix }) }, { source: game });
     }
     catch (error) { reportGameCreate('remix', { error: createError(error) }, { source: game }); notify(failure(error), 'error'); }
   };

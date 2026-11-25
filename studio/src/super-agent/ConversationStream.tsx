@@ -5,7 +5,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import type { AgentRuntimeInfo } from '../../../shared/agent-runtimes';
 import { designRoutes, findDesignScenario, isDesignScenario } from '../../../shared/design-project';
 import { designClient } from '../design/designClient';
-import type { GameCard } from '../../../shared/game-contract';
+import { isReadyBuiltInTemplate, type GameCard } from '../../../shared/game-contract';
 import type { GatewayStatus, Model } from '../../../shared/gateway';
 import type { LocalAgent } from '../../../shared/local-agents';
 import {
@@ -64,6 +64,7 @@ import {
   buildGameHiddenInstructions,
   buildGameUserPrompt,
   localizedGameTitle,
+  matchesDefaultGameDescription,
   toGameArtifact,
   toGameResourceAttachment,
 } from '../motion/game/gameSuperAgent';
@@ -1160,9 +1161,15 @@ export function ConversationStream({
                   : '',
               ].filter(Boolean)
             : [];
+          const isBuiltInTemplateRemix = Boolean(
+            selectedTemplate && isReadyBuiltInTemplate(selectedTemplate),
+          );
+          const trimmedInput = snapText.trim();
+          const hasCustomInputText = Boolean(trimmedInput)
+            && !(selectedTemplate && matchesDefaultGameDescription(selectedTemplate, trimmedInput));
           const remixUserNotes = [
             remixOverrideParts.length > 0 ? `Requested remix overrides: ${remixOverrideParts.join(', ')}.` : '',
-            snapText.trim(),
+            hasCustomInputText ? trimmedInput : '',
           ].filter(Boolean).join('\n');
           const effectiveGameForInstructions = selectedTemplate && !selectedTemplate.external
             ? {
@@ -1180,6 +1187,15 @@ export function ConversationStream({
             effectiveGameForInstructions,
             created.agentInstruction,
             selectedTemplate && remixUserNotes ? remixUserNotes : undefined,
+            isBuiltInTemplateRemix
+              ? {
+                  builtInTemplateRemix: true,
+                  hasUserPromptText: hasCustomInputText,
+                  parameterOverrides: remixOverrideParts,
+                  hasExtraAttachments: cappedAttachments.length > 0,
+                  locale,
+                }
+              : undefined,
           );
           const contextTags: SuperAgentContextTag[] = [
             ...buildGameContextTags(
