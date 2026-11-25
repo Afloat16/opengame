@@ -1767,13 +1767,6 @@ function actionCardMeta(kind: SuperAgentActionCard['kind']): {
         description: 'Your OpenDesign balance was too low for this generation. Top up your credits, then reply here to resume.',
         cta: 'Manage billing',
       };
-    case 'web_publish_sign_in':
-      return {
-        icon: 'global-line',
-        title: 'Sign in to publish online',
-        description: 'Sign in with OpenDesign to publish a shareable web link.',
-        cta: 'Sign in & publish',
-      };
     case 'configure_key':
     default:
       return {
@@ -1809,7 +1802,7 @@ function TurnActionCard({
   onResume?: AccountHandoffResume;
   onOpenSettings?: (card: SuperAgentActionCard, target: 'account' | 'api_key') => void;
 }) {
-  if (card.kind === 'sign_in' || card.kind === 'upgrade_free' || card.kind === 'upgrade_go') {
+  if (card.kind === 'sign_in' || card.kind === 'upgrade_free' || card.kind === 'upgrade_go' || card.kind === 'web_publish_sign_in') {
     return <AccountHandoffCard card={card} handoffKey={handoffKey} onResume={onResume} onOpenSettings={onOpenSettings} />;
   }
   return <GateActionCard card={card} onTrigger={onTrigger} />;

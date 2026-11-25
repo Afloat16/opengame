@@ -16,9 +16,13 @@ const UPGRADE_TIMEOUT = 20 * 60_000;
 // pending request, polling and deadline instead of falling back to idle; resumes stay once per key.
 type HandoffSession = { state: AccountHandoffState; entryId: string; deadline: number; plansEntryId: string | null };
 
-/** Same touchpoint hook ids as the commercialization gates (#24), so one funnel covers these cards. */
-export function accountHandoffHookId(kind: SuperAgentActionCard['kind']) {
-  return kind === 'sign_in' ? 'studio_generate' as const : 'studio_free_gate' as const;
+/**
+ * Same touchpoint hook ids as the commercialization gates (#24), so one funnel covers these cards. Publish sign-in
+ * cards reuse the Cloud Share hooks of the publish popover (game_publish_signin for games, cloud_share_signin otherwise).
+ */
+export function accountHandoffHookId(card: Pick<SuperAgentActionCard, 'kind' | 'targetKind'>) {
+  if (card.kind === 'web_publish_sign_in') return card.targetKind === 'game' ? 'game_publish_signin' as const : 'cloud_share_signin' as const;
+  return card.kind === 'sign_in' ? 'studio_generate' as const : 'studio_free_gate' as const;
 }
 const sessions = new Map<string, HandoffSession>();
 // One continuation per key, shared by every mount: in flight or succeeded. A failed one is removed so Retry re-sends.
@@ -38,8 +42,10 @@ export function useAccountHandoff(card: SuperAgentActionCard, onResume?: Account
   const attempts = useRef(0);
   // entry_id carried by the pricing link the user last opened; its checkout-return refresh reports this id.
   const plansEntryId = useRef<string | null>(null);
-  const hookId = useRef(accountHandoffHookId(card.kind));
-  hookId.current = accountHandoffHookId(card.kind);
+  const hookId = useRef(accountHandoffHookId(card));
+  hookId.current = accountHandoffHookId(card);
+  // Publishing only needs a signed-in account: plan entitlement never applies to publish sign-in cards.
+  const signInOnly = card.kind === 'web_publish_sign_in';
   const current = useRef(state);
   const mounted = useRef(false);
   const generation = useRef(0);
@@ -68,10 +74,10 @@ export function useAccountHandoff(card: SuperAgentActionCard, onResume?: Account
   // Right after sign-in the connector may report signed-in before its first billing read lands (no plan yet).
   // Read once with refresh so Free/Go accounts are not mistaken for "unknown plan" and resumed without the plans page.
   const withPlan = useCallback(async (summary: AccountSummary) => (
-    summary.state === 'signed-in' && !summary.billingUnavailable && !summary.plan
+    !signInOnly && summary.state === 'signed-in' && !summary.billingUnavailable && !summary.plan
       ? gatewayRequest<AccountSummary>('settings/account?refresh=true').catch(() => summary)
       : summary
-  ), []);
+  ), [signInOnly]);
   const notify = useCallback(() => {
     notifyProvidersChanged();
     window.dispatchEvent(new Event('motion:account-changed'));
@@ -92,12 +98,12 @@ export function useAccountHandoff(card: SuperAgentActionCard, onResume?: Account
       summary = await withPlan(summary);
       if (!isCurrent(run)) return;
       if (summary.state === 'signed-in') notify();
-      const next = accountHandoffReducer({ status: 'starting' }, summary);
+      const next = accountHandoffReducer({ status: 'starting' }, summary, { signInOnly });
       transition(next);
     } catch (error) {
       if (isCurrent(run)) transition({ status: 'failed', reason: 'start_failed', message: error instanceof Error ? error.message : undefined });
     }
-  }, [isCurrent, notify, transition, withPlan]);
+  }, [isCurrent, notify, signInOnly, transition, withPlan]);
 
   useEffect(() => {
     mounted.current = true;
@@ -125,13 +131,14 @@ export function useAccountHandoff(card: SuperAgentActionCard, onResume?: Account
     // A restored card never resumes by itself. Its initial read only changes the idle CTA.
     void gatewayRequest<AccountSummary>('settings/account').then(summary => {
       if (isCurrent(run) && current.current.status === 'idle') {
+        if (signInOnly) { setAlreadySignedIn(summary.state === 'signed-in'); return; }
         const signedIn = summary.state === 'signed-in' && !summary.billingUnavailable;
         setAlreadySignedIn(signedIn && planMediaEntitlement(summary.plan) === 'included');
         setSignedInForPlans(signedIn && planMediaEntitlement(summary.plan) === 'not-included');
       }
     }).catch(() => {});
     return () => { mounted.current = false; generation.current++; };
-  }, [handoffKey, isCurrent, runStart]);
+  }, [handoffKey, isCurrent, runStart, signInOnly]);
 
   const start = useCallback(async (target: SuperAgentActionCard = card) => {
     if (!mounted.current || !['idle', 'failed'].includes(current.current.status)) return;
@@ -163,7 +170,7 @@ export function useAccountHandoff(card: SuperAgentActionCard, onResume?: Account
       if (!isCurrent(run) || current.current.status !== previous.status) return;
       if (!upgrade) summary = await withPlan(summary);
       if (!isCurrent(run) || current.current.status !== previous.status) return;
-      const next = accountHandoffReducer(current.current, summary);
+      const next = accountHandoffReducer(current.current, summary, { signInOnly });
       if (summary.state === 'signed-in' && (previous.status === 'authorizing' || next.status === 'resuming')) notify();
       if (upgrade && next.status === 'resuming') reportEntitlementRefresh('creative_studio', hookId.current, plansEntryId.current ?? entryId.current, 'success', true);
       if (next.status === 'opening_plan') deadline.current = Date.now() + UPGRADE_TIMEOUT;
@@ -173,7 +180,7 @@ export function useAccountHandoff(card: SuperAgentActionCard, onResume?: Account
     } finally {
       if (polling.current === request) polling.current = null;
     }
-  }, [isCurrent, notify, transition, withPlan]);
+  }, [isCurrent, notify, signInOnly, transition, withPlan]);
 
   // The pricing link is opened by the card's own anchor (a user gesture, so popup blockers allow it).
   // That click starts the upgrade wait; detection then polls the local account like the checkout-return refresh.

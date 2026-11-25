@@ -19,17 +19,26 @@ export function AccountHandoffCard({ card, handoffKey, onResume, onOpenSettings 
   const {
     state, alreadySignedIn, signedInForPlans, entryId, hookId, beginAttempt, start, retry, cancel, refresh, openPlans,
   } = useAccountHandoff(card, onResume, handoffKey);
-  const signIn = card.kind === 'sign_in';
+  const publish = card.kind === 'web_publish_sign_in';
+  const signIn = card.kind === 'sign_in' || publish;
   // Exposure / click tracking matches the commercialization gate cards (#24): same hook ids, page and campaign.
+  // Publish cards also carry publish_target, like the publish popover's own sign-in gate.
   const campaign = useBlackFridayActive();
-  const campaignFields = campaign ? { campaign_id: BLACK_FRIDAY_CAMPAIGN } as const : {};
+  const campaignFields = {
+    ...(campaign ? { campaign_id: BLACK_FRIDAY_CAMPAIGN } as const : {}),
+    ...(publish && card.targetKind ? { publish_target: card.targetKind } : {}),
+  };
   const viewed = useRef(false);
   useEffect(() => {
     if (viewed.current || !entryId) return;
     viewed.current = true;
     // Once per card, with the entry_id its first click reuses.
-    reportEntitlementGateView('creative_studio', hookId, { studio_id: 'game', entry_id: entryId, ...(campaign ? { campaign_id: BLACK_FRIDAY_CAMPAIGN } : {}) });
-  }, [entryId, hookId, campaign]);
+    reportEntitlementGateView('creative_studio', hookId, {
+      studio_id: 'game', entry_id: entryId,
+      ...(campaign ? { campaign_id: BLACK_FRIDAY_CAMPAIGN } : {}),
+      ...(publish && card.targetKind ? { publish_target: card.targetKind } : {}),
+    });
+  }, [entryId, hookId, campaign, publish, card.targetKind]);
   const track = (element: 'start_sign_in' | 'open_pricing', id: string) =>
     reportEntitlementGateClick('creative_studio', element, hookId, { studio_id: 'game', entry_id: id, ...campaignFields });
   const pricingUrl = entryId ? campaignPricingUrl(locale, 'opengame_agent_upgrade', entryId) : undefined;
@@ -41,13 +50,15 @@ export function AccountHandoffCard({ card, handoffKey, onResume, onOpenSettings 
     track('open_pricing', entryId);
     openPlans(pricingUrl);
   };
-  let title = t(signIn ? 'Sign in with OpenDesign' : 'Upgrade to OpenDesign Plus');
-  let description = t(signIn
-    ? "Sign in to generate AI images, video, music and voice. I'll continue automatically once you're signed in."
-    : card.kind === 'upgrade_go'
-      ? "Go plan does not include AI media generation. Upgrade to Plus and I'll continue automatically."
-      : "Free plan does not include AI media generation. Upgrade to Plus and I'll continue automatically.");
-  let label = signIn ? t('Sign in & continue') : upgradeLabel;
+  let title = t(publish ? 'Sign in to publish online' : signIn ? 'Sign in with OpenDesign' : 'Upgrade to OpenDesign Plus');
+  let description = t(publish
+    ? "Sign in with OpenDesign to get a shareable web link. I'll publish again automatically once you're signed in."
+    : signIn
+      ? "Sign in to generate AI images, video, music and voice. I'll continue automatically once you're signed in."
+      : card.kind === 'upgrade_go'
+        ? "Go plan does not include AI media generation. Upgrade to Plus and I'll continue automatically."
+        : "Free plan does not include AI media generation. Upgrade to Plus and I'll continue automatically.");
+  let label = publish ? t('Sign in & publish') : signIn ? t('Sign in & continue') : upgradeLabel;
   let action = () => { track(signIn ? 'start_sign_in' : 'open_pricing', beginAttempt()); void start(card); };
   const retryAction = () => { track(signIn ? 'start_sign_in' : 'open_pricing', beginAttempt()); void retry(); };
   let secondary: 'cancel' | 'refresh' | 'settings' | undefined;
@@ -56,7 +67,7 @@ export function AccountHandoffCard({ card, handoffKey, onResume, onOpenSettings 
 
   switch (state.status) {
     case 'idle':
-      if (alreadySignedIn) { title = t("You're signed in"); description = ''; label = t('Continue'); action = () => { beginAttempt(); void start(card); }; }
+      if (alreadySignedIn) { title = t("You're signed in"); description = ''; label = t(publish ? 'Publish again' : 'Continue'); action = () => { beginAttempt(); void start(card); }; }
       else if (!signIn) {
         secondary = 'settings';
         // Already signed in on Free/Go: open the pricing page directly; otherwise sign in locally first.
@@ -89,14 +100,14 @@ export function AccountHandoffCard({ card, handoffKey, onResume, onOpenSettings 
       break;
     case 'resuming':
     case 'done':
-      title = t('Signed in — continuing your request'); description = ''; label = '';
+      title = t(publish ? 'Signed in — publishing again' : 'Signed in — continuing your request'); description = ''; label = '';
       break;
     case 'failed':
       title = t(state.reason === 'timeout' ? 'Sign-in timed out.'
         : state.reason === 'cancelled' ? 'Sign-in was cancelled.'
         : state.reason === 'connector_unavailable' ? "The OpenDesign sign-in component isn't available on this device."
         : state.reason === 'plan_open_failed' ? "Couldn't open your browser."
-        : state.reason === 'continue_failed' ? "Signed in, but couldn't continue your request." : 'Sign-in failed.');
+        : state.reason === 'continue_failed' ? (publish ? "Signed in, but couldn't publish again." : "Signed in, but couldn't continue your request.") : 'Sign-in failed.');
       description = state.reason === 'unknown' || state.reason === 'start_failed' || state.reason === 'continue_failed' ? state.message || '' : '';
       label = t('Retry'); action = retryAction;
       if (state.phase === 'upgrade' && state.reason === 'timeout') {
@@ -111,7 +122,7 @@ export function AccountHandoffCard({ card, handoffKey, onResume, onOpenSettings 
   return (
     <div className="om-sa-action-card" data-kind={card.kind} data-state={state.status} role="group" aria-label={title}>
       <span className="om-sa-action-card-icon" aria-hidden="true">
-        <RemixIcon name={state.status === 'done' || state.status === 'resuming' ? 'checkbox-circle-line' : signIn ? 'account-circle-line' : 'sparkling-line'} size={18} />
+        <RemixIcon name={state.status === 'done' || state.status === 'resuming' ? 'checkbox-circle-line' : publish ? 'global-line' : signIn ? 'account-circle-line' : 'sparkling-line'} size={18} />
       </span>
       <div className="om-sa-action-card-copy" aria-live="polite">
         <strong>{title}</strong>
