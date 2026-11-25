@@ -1,7 +1,7 @@
-import { gameGenres, gameSettings, gameStyles, type GameBrief, type GameCard, type GameCatalog, type GameCreated, type GameGenre, type GameRemixOptions, type GameSetting, type GameStyle, type GameTrailer, type GameHandoff } from '../../../../shared/game-contract';
+import { gameGenreLabels, gameGenres, gameSettings, gameStyles, type GameBrief, type GameCard, type GameCatalog, type GameCreated, type GameGenre, type GameRemixOptions, type GameSetting, type GameStyle, type GameTrailer, type GameHandoff } from '../../../../shared/game-contract';
 import { motionApi } from '../useWorkspace';
 
-export const genreLabels: Record<GameGenre, string> = { shooter: 'Shooter', platformer: 'Platformer', story: 'Story', casual: 'Casual', racing: 'Racing', horror: 'Horror' };
+export const genreLabels: Record<GameGenre, string> = gameGenreLabels;
 export const styleLabels: Record<GameStyle, string> = { pixel: 'Pixel art', minimal: 'Minimalist', ascii: 'ASCII art', voxel: 'Voxel', anime: 'Anime', '3d': '3D' };
 export const settingLabels: Record<GameSetting, string> = { medieval: 'Medieval', cyberpunk: 'Cyberpunk', retro: 'Retro', modern: 'Modern', space: 'Outer space', fantasy: 'Fantasy' };
 /** Example briefs shown as the input placeholder for each genre. */

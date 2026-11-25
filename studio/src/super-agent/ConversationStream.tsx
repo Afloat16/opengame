@@ -72,7 +72,7 @@ import { inspectBridgeAgent, notifyRuntimesChanged } from '../motion/useAgentRun
 import { notifyAgentsChanged } from '../motion/useLocalAgents';
 import { WorkspaceBack } from '../motion/WorkspaceBack';
 import { AgentModelPicker } from './AgentModelPicker';
-import { compactDirLabel } from './ChangedFilesTree';
+import { compactDirLabel, isInternalManagedStorageDir } from './ChangedFilesTree';
 import { ApprovalCard, ExecutionTimeline } from './ExecutionTimeline';
 import {
   ResourceThumbImage,
@@ -1611,7 +1611,11 @@ export function ConversationStream({
               {chat && <RemixIcon name="edit-line" size={12} />}
             </Button>
           ) : null}
-          {chat && !renaming && chat.projectDir && (
+          {chat && !renaming && chat.projectDir && !isInternalManagedStorageDir(chat.projectDir) && (
+            chat.intent === 'coding'
+            || Boolean(chat.workingDir)
+            || !/^(?:games|design|projects|work)\/[0-9a-f]{8}-[0-9a-f]{4}-/i.test(compactDirLabel(chat.projectDir))
+          ) && (
             <Tooltip label={t('Project directory: {path}', { path: chat.projectDir })}>
               <Button
                 variant="plain"
@@ -2324,19 +2328,31 @@ export function ConversationStream({
           <ComposerPromptEditor
             ref={composerRef}
             ariaLabel={t('Message Super Agent')}
-            placeholder={
-              hasPendingApproval
-                ? t('Confirm or decline the pending action above to continue…')
-                : editingQueuedId
-                  ? t('Edit queued message…')
-                  : isRunning
-                    ? followUpBehavior === 'queue'
-                      ? t('Queue a follow-up message…')
-                      : t('Send a follow-up to steer the current run…')
-                    : activeMode?.id === 'game' && modeOptions.gameTemplate
-                      ? t('Describe how to remix {title}, or send as is', { title: localizedGameTitle(modeOptions.gameTemplate, locale) })
-                      : getModeComposerPlaceholder(activeMode, modeOptions, t)
-            }
+            placeholder={(() => {
+              if (hasPendingApproval) return t('Confirm or decline the pending action above to continue…');
+              if (editingQueuedId) return t('Edit queued message…');
+              if (isRunning) {
+                return followUpBehavior === 'queue'
+                  ? t('Queue a follow-up message…')
+                  : t('Send a follow-up to steer the current run…');
+              }
+              if (activeMode?.id === 'game' && modeOptions.gameTemplate) {
+                return t('Describe how to remix {title}, or send as is', { title: localizedGameTitle(modeOptions.gameTemplate, locale) });
+              }
+              if (!activeMode && chat && chat.messages.length > 0) {
+                const primaryDeliverable = [...chat.artifacts].reverse().find(a => a.kind !== 'workspace-file' && a.kind !== 'web');
+                if (primaryDeliverable) {
+                  const rawLabel = (primaryDeliverable.title || chat.title || '').split('·')[0].trim();
+                  const shortTitle = rawLabel.length > 18 ? `${rawLabel.slice(0, 18)}…` : rawLabel;
+                  if (shortTitle) {
+                    return primaryDeliverable.kind === 'game-project'
+                      ? t('Continue tuning "{title}" — adjust controls, visuals, levels, or difficulty…', { title: shortTitle })
+                      : t('Describe changes for "{title}", or ask a follow-up…', { title: shortTitle });
+                  }
+                }
+              }
+              return getModeComposerPlaceholder(activeMode, modeOptions, t);
+            })()}
             disabled={loading || hasPendingApproval}
             mentionMenuOpen={mentionMenuOpen}
             onMenuKey={handleMenuKey}

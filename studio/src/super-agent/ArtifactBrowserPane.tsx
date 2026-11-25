@@ -151,9 +151,19 @@ function artifactAddressDisplay(artifact: SuperAgentArtifact): string {
     }
     return artifact.title;
   }
+  if (
+    artifact.kind === 'design-project'
+    || artifact.kind === 'motion-project'
+    || artifact.kind === 'motion-export'
+    || artifact.kind === 'asset-image'
+    || artifact.kind === 'asset-video'
+    || artifact.kind === 'asset-audio'
+    || artifact.kind === 'brand-kit'
+  ) {
+    return artifact.title;
+  }
   return artifactCanonicalAddress(artifact);
 }
-
 function searchWebUrl(query: string): string {
   return `https://www.bing.com/search?q=${encodeURIComponent(query.trim())}`;
 }
@@ -1083,6 +1093,43 @@ function GameProjectArtifactView({
     },
   });
 
+  const pendingFrameFocusRef = useRef(true);
+  const focusGameFrame = useCallback(() => {
+    if (effectiveMode !== 'preview' || annotateActive) return;
+    requestAnimationFrame(() => {
+      if (typeof document !== 'undefined') {
+        const activeEl = document.activeElement;
+        if (
+          activeEl instanceof HTMLElement
+          && (
+            activeEl.tagName === 'INPUT'
+            || activeEl.tagName === 'TEXTAREA'
+            || activeEl.tagName === 'SELECT'
+            || activeEl.isContentEditable
+            || Boolean(activeEl.closest('[contenteditable="true"]'))
+          )
+        ) {
+          return;
+        }
+      }
+      const frame = bridge.iframeRef.current;
+      if (!frame) return;
+      frame.focus({ preventScroll: true });
+      try {
+        frame.contentWindow?.focus();
+      } catch {
+        // Cross-origin frame focus may throw in strict sandboxes; element focus still succeeds.
+      }
+    });
+  }, [effectiveMode, annotateActive, bridge.iframeRef]);
+
+  useEffect(() => {
+    if (effectiveMode === 'preview' && !annotateActive) {
+      pendingFrameFocusRef.current = true;
+      focusGameFrame();
+    }
+  }, [artifact.id, reloadKey, effectiveMode, annotateActive, focusGameFrame]);
+
   if (mode === 'trailer' && trailerUrl) {
     return (
       <div className="om-sa-media-stage" data-kind="video">
@@ -1184,7 +1231,13 @@ function GameProjectArtifactView({
       onNotify={onNotify}
       frameRef={bridge.frameRef}
       iframeRef={bridge.iframeRef}
-      onIframeLoad={isExternalGame || bundledBlobUrl ? undefined : bridge.syncPickMode}
+      onIframeLoad={() => {
+        if (!isExternalGame && !bundledBlobUrl) bridge.syncPickMode();
+        if (pendingFrameFocusRef.current) {
+          pendingFrameFocusRef.current = false;
+          focusGameFrame();
+        }
+      }}
       loadingBrand
       overlay={annotateActive && Boolean(projectId) && effectiveMode === 'preview' ? (
         <BrowserAnnotationOverlay
@@ -2378,7 +2431,7 @@ export function ArtifactBrowserPane({
               event.preventDefault();
               const trimmed = addressDraft.trim();
               const activeDisplay = activeArtifact ? artifactAddressDisplay(activeArtifact) : '';
-              if (!trimmed || trimmed === activeDisplay || /^(?:design|motion|game|export|asset|brand):\/\//i.test(trimmed)) return;
+              if (!trimmed || (activeArtifact?.kind !== 'web' && trimmed === activeDisplay) || /^(?:design|motion|game|export|asset|brand):\/\//i.test(trimmed)) return;
               const normalized = normalizeBrowserAddress(trimmed);
               setAddressEditing(false);
               addressInputRef.current?.blur();
@@ -2400,7 +2453,11 @@ export function ArtifactBrowserPane({
             />
           </form>
 
-          {addressEditing && addressDraft.trim() && addressDraft.trim() !== (activeArtifact ? artifactAddressDisplay(activeArtifact) : '') && !/^(?:design|motion|game|export|asset|brand):\/\//i.test(addressDraft.trim()) && (() => {
+          {addressEditing
+            && addressDraft.trim()
+            && !(activeArtifact && activeArtifact.kind !== 'web' && addressDraft.trim() === artifactAddressDisplay(activeArtifact))
+            && !/^(?:design|motion|game|export|asset|brand):\/\//i.test(addressDraft.trim())
+            && (() => {
             const trimmed = addressDraft.trim();
             const normalized = normalizeBrowserAddress(trimmed);
             const q = trimmed.toLowerCase();
@@ -2560,6 +2617,7 @@ export function ArtifactBrowserPane({
                         className="motion-icon-button om-sa-annotate-btn"
                         data-active={annotateActive || undefined}
                         aria-label={t('Annotate elements, regions, and drawings')}
+                        onMouseDown={event => event.preventDefault()}
                         onClick={() => {
                           setAnnotateActive(v => {
                             const next = !v;

@@ -15,6 +15,15 @@ export type GameGenre = typeof gameGenres[number];
 export type GameStyle = typeof gameStyles[number];
 export type GameSetting = typeof gameSettings[number];
 
+export const gameGenreLabels: Record<GameGenre, string> = {
+  shooter: 'Shooter',
+  platformer: 'Platformer',
+  story: 'Story',
+  casual: 'Casual',
+  racing: 'Racing',
+  horror: 'Horror',
+};
+
 /** Lifecycle of a game project. Only `published` games appear in Explore. */
 export type GameStatus = 'draft' | 'building' | 'ready' | 'published' | 'failed';
 
