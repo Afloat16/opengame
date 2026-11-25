@@ -22,7 +22,7 @@ import { injectPreviewBridgeHtml, isValidPreviewBridgeToken } from './shared/pre
 import { attachmentDisposition } from './shared/http-header.ts';
 import { zip } from './scripts/zip.mjs';
 import { escapeHtml } from './shared/scenario-content.ts';
-import { formatGameBriefPrompt, gameAssetInstructions, gameGenres, gameStyles, gameSettings, type GameBrief, type GameCard, type GameCatalog, type GameCatalogIssue, type GameCreated, type GameHandoff, type GameRemixOptions, type RoomServerMessage, type GameTrailer, type GameTrailerStatus } from './shared/game-contract.ts';
+import { formatGameBriefPrompt, gameAssetInstructions, gameGenreLabels, gameGenres, gameStyles, gameSettings, type GameBrief, type GameCard, type GameCatalog, type GameCatalogIssue, type GameCreated, type GameHandoff, type GameRemixOptions, type RoomServerMessage, type GameTrailer, type GameTrailerStatus } from './shared/game-contract.ts';
 
 const templatesRoot = fileURLToPath(new URL('./templates/games/', import.meta.url));
 const kitsRoot = fileURLToPath(new URL('./templates/game-kits/', import.meta.url));
@@ -293,7 +293,7 @@ function createSinglePlayerGame(service: GameProjects, raw: any) {
   return service.create({ ...raw, multiplayer: false });
 }
 function instruction(game: GameCard, brief: GameBrief, remix = false) {
-  const summary = [brief.style && `${brief.style} style`, brief.genre, brief.setting && `${brief.setting} setting`].filter(Boolean).join(', ');
+  const summary = [brief.style && `${brief.style} style`, brief.genre && gameGenreLabels[brief.genre].toLowerCase(), brief.setting && `${brief.setting} setting`].filter(Boolean).join(', ');
   const assetInstructions = brief.playableAd
     ? 'Follow the playable-ad recipe and keep all game assets inline in index.html.'
     : gameAssetInstructions;
@@ -556,7 +556,7 @@ export function gameTrailerComposition(game: Pick<GameCard,'title'|'description'
   const title=game.i18n?.['zh-CN']?.title||game.title,description=game.i18n?.['zh-CN']?.description||game.description,controls=game.i18n?.['zh-CN']?.controls||game.controls||'WASD / arrows · Space · click / tap';
   const clipDuration=clips.length===3?4.5:5;
   const endStart=3+clips.length*clipDuration,duration=endStart+2.5;
-  const captions=[game.genre,description.slice(0,100),game.multiplayer?'Join the team':'Find your rhythm'];
+  const captions=[gameGenreLabels[game.genre],description.slice(0,100),game.multiplayer?'Join the team':'Find your rhythm'];
   const composition={title,width:1280,height:720,fps:30,duration,cover,segments:[{kind:'title',start:0,duration:3},...clips.map((src,i)=>({kind:'gameplay',src,start:3+i*clipDuration,duration:clipDuration,caption:captions[i]})),{kind:'end',start:endStart,duration:2.5,caption:'Play now',controls}]};
   const videos=clips.map((src,i)=>`<video id="highlight-${i}" class="clip" src="${escape(src)}" data-start="${3+i*clipDuration}" data-duration="${clipDuration}" data-media-start="0" data-track-index="0" muted playsinline style="position:absolute;inset:0;width:1280px;height:720px;object-fit:cover"></video><div id="caption-${i}" class="clip caption" data-start="${3+i*clipDuration}" data-duration="${clipDuration}" data-track-index="2">${escape(captions[i])}</div>`).join('\n');
   // Multi-element cards are scenes. Their clocks are local to each mount, not root time.

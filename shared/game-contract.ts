@@ -18,7 +18,7 @@ export type GameSetting = typeof gameSettings[number];
 export const gameGenreLabels: Record<GameGenre, string> = {
   shooter: 'Shooter',
   platformer: 'Platformer',
-  story: 'Story',
+  story: 'Visual novel',
   casual: 'Casual',
   racing: 'Racing',
   horror: 'Horror',

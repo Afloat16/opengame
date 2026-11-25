@@ -2552,7 +2552,10 @@ it('keeps multiplayer games playable in the catalog and only scaffolds single-pl
     // Verifies Game Studio hero, 6 genre strip buttons, top controls, and game market template cards
     expect(container.querySelector('.om-sa-mode-hero-copy h2')?.textContent).toBe('Create a playable game in minutes');
     expect(container.querySelector('.om-sa-mode-hero-copy p')).toBeNull();
-    expect(container.querySelectorAll('.om-sa-game-genre-card').length).toBe(6);
+    const genreCards = [...container.querySelectorAll('.om-sa-game-genre-card')];
+    expect(genreCards.length).toBe(6);
+    expect(genreCards.map(card => card.textContent?.trim())).toContain('Visual novel');
+    expect(genreCards.map(card => card.textContent?.trim())).not.toContain('Story');
     expect(container.querySelectorAll('.om-sa-game-showcase-card').length).toBeGreaterThan(0);
 
     const filters = container.querySelector('.om-sa-showcase-tabs')!;
