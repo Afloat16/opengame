@@ -1,6 +1,6 @@
 import { Button } from 'open-design-ui/button';
 import { IconButton } from 'open-design-ui/icon-button';
-import { useEffect, useId, useMemo, useRef, useState } from 'react';
+import { useEffect, useId, useMemo, useRef, useState, type ReactNode } from 'react';
 import { preconnect } from 'react-dom';
 import { blackFridayTemplates } from '../../../shared/black-friday-collection';
 import type { GalleryTemplate } from '../../../shared/catalog';
@@ -684,7 +684,9 @@ function buildCinemaCardsByCategory(
   return dedupe([...cinema, ...seedance, ...videoScenes]);
 }
 
-function motionTemplateToAttachment(tpl: GalleryTemplate): SuperAgentResourceAttachment {
+type ShowcaseResource = SuperAgentResourceAttachment & { prompt?: string };
+
+function motionTemplatePromptCard(tpl: GalleryTemplate): ShowcaseResource {
   return {
     id: tpl.id,
     kind: 'motion-template',
@@ -692,6 +694,7 @@ function motionTemplateToAttachment(tpl: GalleryTemplate): SuperAgentResourceAtt
     subtitle: tpl.brand || tpl.subtitle || tpl.collection || 'Motion',
     previewUrl: tpl.posterUrl,
     tags: tpl.tags,
+    prompt: [tpl.description?.trim(), tpl.styleDescription?.trim()].filter(Boolean).join('\n\n') || tpl.title,
   };
 }
 
@@ -706,9 +709,18 @@ function motionSkillToAttachment(skill: MotionSkill): SuperAgentResourceAttachme
   };
 }
 
+function ShowcaseActionCue({ label, selected = false }: { label: string; selected?: boolean }) {
+  return (
+    <span className="om-sa-showcase-action-cue" data-selected={selected || undefined} aria-hidden="true">
+      <RemixIcon name={selected ? 'check-line' : 'sparkling-line'} size={13} />
+      <span>{label}</span>
+    </span>
+  );
+}
+
 type FilterOption = { id: string; label: string; count?: number };
 
-function ResourceShowcaseThumb({ item, active = true }: { item: SuperAgentResourceAttachment; active?: boolean }) {
+function ResourceShowcaseThumb({ item, active = true, children }: { item: SuperAgentResourceAttachment; active?: boolean; children?: ReactNode }) {
   const { t } = useI18n();
   const [imgFailed, setImgFailed] = useState(false);
 
@@ -716,6 +728,7 @@ function ResourceShowcaseThumb({ item, active = true }: { item: SuperAgentResour
     return (
       <div className="om-sa-showcase-thumb om-sa-showcase-iframe-wrap" aria-hidden="true">
         <ScaledPreviewThumb src={item.previewUrl} title={item.title} active={active} />
+        {children}
       </div>
     );
   }
@@ -724,6 +737,7 @@ function ResourceShowcaseThumb({ item, active = true }: { item: SuperAgentResour
     return (
       <div className="om-sa-showcase-thumb" data-modality="video" aria-hidden="true">
         <VideoFrameThumbnail key={item.previewUrl} src={item.previewUrl} fallbackLabel={t('Preview unavailable')} />
+        {children}
       </div>
     );
   }
@@ -742,6 +756,7 @@ function ResourceShowcaseThumb({ item, active = true }: { item: SuperAgentResour
     return (
       <div className="om-sa-showcase-thumb" aria-hidden="true">
         <img src={item.previewUrl} alt="" loading="lazy" decoding="async" onError={() => setImgFailed(true)} />
+        {children}
       </div>
     );
   }
@@ -752,6 +767,7 @@ function ResourceShowcaseThumb({ item, active = true }: { item: SuperAgentResour
         {item.swatches.slice(0, 5).map((hex, i) => (
           <span key={`${hex}-${i}`} style={{ background: hex }} />
         ))}
+        {children}
       </div>
     );
   }
@@ -759,6 +775,7 @@ function ResourceShowcaseThumb({ item, active = true }: { item: SuperAgentResour
   return (
     <div className="om-sa-showcase-thumb om-sa-showcase-icon-fallback" aria-hidden="true">
       <RemixIcon name={resourceIcon(item)} size={24} />
+      {children}
     </div>
   );
 }
@@ -819,6 +836,8 @@ export function ModeResourceShowcase({
   onToggleAttachment,
   onPlayGame,
   onDeployGame,
+  composer,
+  onApplyTemplate,
   onFocusComposer,
   onPickPrompt,
   onOpenAllResources,
@@ -833,6 +852,8 @@ export function ModeResourceShowcase({
   onToggleAttachment: (item: SuperAgentResourceAttachment) => boolean | void;
   onPlayGame?: (game: GameCard) => void;
   onDeployGame?: (game: GameCard) => void;
+  composer: ReactNode;
+  onApplyTemplate: () => void;
   onFocusComposer?: () => void;
   onPickPrompt: (prompt: string, meta?: PickPromptMeta) => void;
   onOpenAllResources: (category: ResourceCategoryTab) => void;
@@ -1255,7 +1276,7 @@ export function ModeResourceShowcase({
   }, [mode.id, modeOptions?.designFormat, isPureVideoView, activeFilter, designQuery, isZh, t]);
 
   // Resolve full resource items for all other tabs (NO 12-item cap!).
-  const resourceItems = useMemo<SuperAgentResourceAttachment[]>(() => {
+  const resourceItems = useMemo<ShowcaseResource[]>(() => {
     if (curatedCards) return [];
     const applyDesignSearch = (items: SuperAgentResourceAttachment[]) => filterByShowcaseQuery(items, resourceQuery);
     if ((mode.id === 'design' || mode.id === 'research' || mode.id === 'visualization') && activeFilter === 'my-designs') {
@@ -1298,15 +1319,15 @@ export function ModeResourceShowcase({
         return list.map(motionSkillToAttachment);
       }
       if (activeFilter === 'top-100-brands') {
-        return rankDiscoverySeries(groupBrandSeries(motionCatalog)).map(b => motionTemplateToAttachment(b.items[0]));
+        return rankDiscoverySeries(groupBrandSeries(motionCatalog)).map(b => motionTemplatePromptCard(b.items[0]));
       }
       if (activeFilter === 'black-friday') {
-        return blackFridayTemplates(motionCatalog, locale).flatMap(stage => stage.items).map(motionTemplateToAttachment);
+        return blackFridayTemplates(motionCatalog, locale).flatMap(stage => stage.items).map(motionTemplatePromptCard);
       }
       if (activeFilter !== 'all') {
-        return templatesInCollection(motionCatalog, activeFilter as TemplateCollection).map(motionTemplateToAttachment);
+        return templatesInCollection(motionCatalog, activeFilter as TemplateCollection).map(motionTemplatePromptCard);
       }
-      return motionCatalog.map(motionTemplateToAttachment);
+      return motionCatalog.map(motionTemplatePromptCard);
     }
     // Design templates (design / research / visualization / website / deck / game)
     const all = designTemplates ?? [];
@@ -1417,7 +1438,10 @@ export function ModeResourceShowcase({
       const att = toGameResourceAttachment(game, title);
       const alreadyAttached = selectedKeys.has(resourceKey(att));
       onToggleAttachment(att);
-      if (!alreadyAttached) onFocusComposer?.();
+      if (!alreadyAttached) {
+        onApplyTemplate();
+        onFocusComposer?.();
+      }
       return;
     }
     const isSelected = modeOptions?.gameTemplate?.id === game.id;
@@ -1434,9 +1458,16 @@ export function ModeResourceShowcase({
         : {}),
     });
     if (!isSelected) {
+      onApplyTemplate();
       onFocusComposer?.();
     }
   };
+  const isImageMode = mode.id === 'image' || (mode.id === 'design' && modeOptions?.designFormat === 'image');
+  const showPromptCue = isImageMode || isVideoMode;
+  function applyCardPrompt(card: CuratedShowcaseCard) {
+    onPickPrompt(t(card.prompt), { optionsPatch: card.optionsPatch, referenceImage: card.referenceImage ?? null });
+    onApplyTemplate();
+  }
   const visibleGames = showGameCards ? filteredGames.slice(0, visibleCount) : null;
   const visibleCurated = !showGameCards && curatedCards ? curatedCards.slice(0, visibleCount) : null;
   const visibleResources = !showGameCards && !curatedCards ? resourceItems.slice(0, visibleCount) : [];
@@ -1511,6 +1542,7 @@ export function ModeResourceShowcase({
                     variant="plain"
                     type="button"
                     className="om-sa-game-fan-card"
+                    data-composer-source={isCenter && !game.multiplayer || undefined}
                     aria-pressed={isCenter && !game.multiplayer ? isSelected : undefined}
                     aria-label={isCenter
                       ? game.multiplayer ? t('Play {title}', { title }) : `${t('Remix')}: ${title}`
@@ -1530,14 +1562,7 @@ export function ModeResourceShowcase({
                   >
                     {cover && <img src={cover} alt="" />}
                     {isCenter && !game.multiplayer && (
-                      <span
-                        className="om-sa-game-select-cue"
-                        data-selected={isSelected || undefined}
-                        aria-hidden="true"
-                      >
-                        <RemixIcon name={isSelected ? 'check-line' : 'sparkling-line'} size={13} />
-                        <span>{isSelected ? t('Selected') : t('Remix')}</span>
-                      </span>
+                      <ShowcaseActionCue label={isSelected ? t('Selected') : t('Remix')} selected={isSelected} />
                     )}
                     <span className="om-sa-game-fan-label">{t(genreLabels[game.genre])}</span>
                   </Button>
@@ -1729,7 +1754,10 @@ export function ModeResourceShowcase({
           );
         })()}
 
-        <div className="om-sa-mode-ideas">
+      </div>
+      <div className="om-sa-mode-composer-group">
+        {composer}
+        <div className="om-sa-mode-ideas" data-composer-source>
           {mode.id === 'design' ? (
             DESIGN_MODULE_QUICK_IDEAS[
               modeOptions?.designFormat === 'image' ? 'image' : (modeOptions?.designScenario ?? 'prototype')
@@ -2042,14 +2070,7 @@ export function ModeResourceShowcase({
                         </div>
                       )}
                       {!game.multiplayer && (
-                        <span
-                          className="om-sa-game-select-cue"
-                          data-selected={isSelected || undefined}
-                          aria-hidden="true"
-                        >
-                          <RemixIcon name={isSelected ? 'check-line' : 'sparkling-line'} size={13} />
-                          <span>{isSelected ? t('Selected') : isMine ? t('Attach') : t('Remix')}</span>
-                        </span>
+                        <ShowcaseActionCue label={isSelected ? t('Selected') : isMine ? t('Attach') : t('Remix')} selected={isSelected} />
                       )}
                       {status && (
                         <span className="om-sa-game-status" data-tone={game.status}>
@@ -2140,10 +2161,9 @@ export function ModeResourceShowcase({
                 variant="plain"
                 type="button"
                 className="om-sa-showcase-card"
-                onClick={() => onPickPrompt(t(card.prompt), {
-                  ...(card.optionsPatch ? { optionsPatch: card.optionsPatch } : {}),
-                  referenceImage: card.referenceImage ?? null,
-                })}
+                data-composer-source
+                aria-label={showPromptCue ? `${t('Use this prompt')}: ${t(card.title)}` : undefined}
+                onClick={() => applyCardPrompt(card)}
               >
                 <div className="om-sa-showcase-thumb" aria-hidden="true">
                   <img
@@ -2153,10 +2173,11 @@ export function ModeResourceShowcase({
                     decoding="async"
                     style={card.posterPosition ? { objectPosition: card.posterPosition } : undefined}
                   />
+                  {showPromptCue && <ShowcaseActionCue label={t('Use this prompt')} />}
                 </div>
-                <span className="om-sa-showcase-check" aria-hidden="true">
-                  <RemixIcon name="arrow-right-up-line" size={13} />
-                </span>
+                {!showPromptCue && (
+                  <span className="om-sa-showcase-check" aria-hidden="true"><RemixIcon name="arrow-right-up-line" size={13} /></span>
+                )}
                 <div className="om-sa-showcase-meta">
                   <strong>{t(card.title)}</strong>
                   <small>{[...card.subtitle.map(label => t(label)), ...(card.seconds ? [t('{count}s', { count: card.seconds })] : [])].join(' · ')}</small>
@@ -2202,7 +2223,9 @@ export function ModeResourceShowcase({
             </div>
           ) : (
             visibleResources.map(item => {
-              const isSelected = selectedKeys.has(resourceKey(item));
+              const isSelected = !item.prompt && selectedKeys.has(resourceKey(item));
+              const mediaTemplate = showPromptCue && (item.kind === 'motion-template' || item.kind === 'design-template');
+              const actionLabel = item.prompt ? t('Use this prompt') : isSelected ? t('Selected') : t('Attach');
               const subtitle = resourceDisplaySubtitle(item, t);
               return (
                 <Button
@@ -2211,16 +2234,25 @@ export function ModeResourceShowcase({
                   type="button"
                   className="om-sa-showcase-card"
                   data-composer-source
-                  aria-pressed={isSelected}
+                  aria-pressed={item.prompt ? undefined : isSelected}
+                  aria-label={mediaTemplate ? `${actionLabel}: ${resourceDisplayTitle(item, t)}` : undefined}
                   data-selected={isSelected || undefined}
                   onClick={() => {
-                    onToggleAttachment(item);
+                    if (item.prompt) {
+                      onPickPrompt(item.prompt, { referenceImage: null });
+                      onApplyTemplate();
+                    } else if (onToggleAttachment(item)) {
+                      onApplyTemplate();
+                      onFocusComposer?.();
+                    }
                   }}
                 >
-                  <ResourceShowcaseThumb item={item} active={active} />
-                  <span className="om-sa-showcase-check" aria-hidden="true">
-                    <RemixIcon name={isSelected ? 'check-line' : 'add-line'} size={13} />
-                  </span>
+                  <ResourceShowcaseThumb item={item} active={active}>
+                    {mediaTemplate && <ShowcaseActionCue label={actionLabel} selected={isSelected} />}
+                  </ResourceShowcaseThumb>
+                  {!mediaTemplate && (
+                    <span className="om-sa-showcase-check" aria-hidden="true"><RemixIcon name={isSelected ? 'check-line' : 'add-line'} size={13} /></span>
+                  )}
                   <div className="om-sa-showcase-meta">
                     <strong>{resourceDisplayTitle(item, t)}</strong>
                     {subtitle && <small>{subtitle}</small>}

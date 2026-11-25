@@ -1608,6 +1608,9 @@
   overscroll-behavior-y: auto;
 }
 
+/* The active creation page and the conversation footer host the same rich editor. */
+.om-sa-composer-placement { display: contents; }
+
 /* Composer */
 .om-sa-composer-wrap {
   flex-shrink: 0;
@@ -1761,6 +1764,11 @@
 .om-sa-composer:focus-within {
   border-color: var(--motion-border);
   box-shadow: 0 0 0 1px color-mix(in srgb, var(--motion-accent) 32%, transparent), var(--motion-shadow-md);
+}
+
+:where([data-motion-studio][data-theme='paper']) .om-sa-composer:focus-within {
+  border-color: var(--motion-neutral-n11);
+  box-shadow: var(--motion-shadow-md);
 }
 
 .om-sa-composer-chips {
@@ -2740,6 +2748,12 @@
 .om-sa-send-btn[data-ready]:hover:not(:disabled) {
   transform: translateY(-1px);
   box-shadow: 0 4px 14px color-mix(in srgb, var(--motion-accent) 44%, transparent);
+}
+
+[data-motion-studio][data-theme='paper'] .om-sa-send-btn[data-ready] {
+  background: var(--motion-neutral-n11);
+  color: var(--motion-neutral-n0);
+  box-shadow: none;
 }
 
 .om-sa-send-btn[data-stop] {
@@ -5353,7 +5367,7 @@
   margin-block-end: 0;
 }
 
-.om-sa-dock-slot:not([data-position='inline']) .om-sa-composer-wrap:not(:has(.om-sa-composer-top-bar)) textarea {
+.om-sa-dock-slot:not([data-position='inline']) .om-sa-composer-wrap:not(:has(.om-sa-composer-top-bar)) .om-sa-composer-editor {
   padding-inline-end: var(--motion-space-32);
 }
 
@@ -5361,6 +5375,11 @@
   width: min(580px, calc(100% - var(--motion-space-32)));
   height: 64px;
   border: 1px solid var(--motion-brand);
+}
+
+[data-motion-studio][data-theme='paper'] .om-sa-dock-slot[data-position='compact'] .om-sa-dock-frame,
+[data-motion-studio][data-theme='paper'] .om-sa-dock-slot[data-position='expanded'] .om-sa-dock-frame:focus-within {
+  border-color: var(--motion-neutral-n11);
 }
 
 .om-sa-dock-slot[data-position='compact'] .om-sa-dock-editor {
@@ -9313,7 +9332,7 @@
   transform: scale(1.03);
 }
 
-.om-sa-game-select-cue {
+.om-sa-showcase-action-cue {
   position: absolute;
   top: 50%;
   left: 50%;
@@ -9334,15 +9353,16 @@
   transition: opacity var(--motion-duration-fast) var(--motion-ease-out), transform var(--motion-duration-fast) var(--motion-ease-out), background var(--motion-duration-fast) var(--motion-ease-out);
 }
 
-.om-sa-game-select-cue[data-selected] {
+.om-sa-showcase-action-cue[data-selected] {
   background: var(--motion-accent);
   color: var(--motion-bg);
 }
 
-.om-sa-game-fan-item:hover .om-sa-game-select-cue,
-.om-sa-game-fan-card:focus-visible .om-sa-game-select-cue,
-.om-sa-game-tile:hover .om-sa-game-select-cue,
-.om-sa-game-tile-cover:focus-visible .om-sa-game-select-cue {
+.om-sa-game-fan-item:hover .om-sa-showcase-action-cue,
+.om-sa-game-fan-card:focus-visible .om-sa-showcase-action-cue,
+.om-sa-game-tile:hover .om-sa-showcase-action-cue,
+.om-sa-game-tile-cover:focus-visible .om-sa-showcase-action-cue,
+.om-sa-showcase-card:is(:hover, :focus-visible) .om-sa-showcase-action-cue {
   opacity: 1;
   transform: translate(-50%, -50%) scale(1);
 }
@@ -9761,7 +9781,7 @@
   .om-sa-param-clear-btn,
   .om-sa-game-fan-item,
   .om-sa-game-fan-card img,
-  .om-sa-game-select-cue,
+  .om-sa-showcase-action-cue,
   .om-sa-game-tile-cover img,
   .om-sa-game-tile-actions,
   .om-sa-game-tile-play,
@@ -9786,6 +9806,11 @@
 @media (prefers-reduced-motion: no-preference) {
   .om-sa-stream-transition {
     animation: om-sa-stream-enter var(--motion-duration-fast) var(--motion-ease-out);
+  }
+
+  /* A transformed ancestor would anchor the floating composer to the gallery. */
+  .om-sa-stream-transition:has(.om-sa-dock-slot) {
+    animation-name: om-sa-fade-in;
   }
 }
 
@@ -10762,4 +10787,98 @@
   .om-sa-mention-spinner {
     animation: none;
   }
+}
+
+/* Original miniature game artwork for the playable ad tooltip. */
+.om-sa-screw-preview {
+  --screw-loop: 5s;
+  position: relative;
+  isolation: isolate;
+  overflow: hidden;
+  width: 100%;
+  aspect-ratio: 174 / 220;
+  max-height: 38dvh;
+  border-radius: var(--motion-radius-md);
+  background: url('./art/pegboard.webp') center / 100% 100%;
+}
+
+.om-sa-screw-plank {
+  position: absolute;
+  inset: 40% 7% auto;
+  height: 20%;
+  background: url('./art/wooden-plank.webp') center / 100% 100%;
+  filter: drop-shadow(0 4px 3px var(--motion-neutral-n9));
+  animation: om-sa-plank-drop var(--screw-loop) ease-in infinite;
+}
+
+.om-sa-screw-head {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: var(--motion-space-32);
+  height: var(--motion-space-32);
+  background: url('./art/brass-screw.webp') center / contain no-repeat;
+  transform: translate(-50%, -50%);
+  animation: om-sa-unscrew var(--screw-loop) ease-in-out infinite;
+}
+
+.om-sa-screw-pointer {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  color: var(--motion-neutral-n0);
+  filter: drop-shadow(0 1px 2px var(--motion-neutral-n9));
+  animation: om-sa-screw-tap var(--screw-loop) ease-in-out infinite;
+}
+
+.om-sa-screw-result {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--motion-space-6);
+  color: var(--motion-neutral-n0);
+  background: linear-gradient(transparent, var(--motion-neutral-n11));
+  animation: om-sa-screw-finish var(--screw-loop) ease-out infinite;
+}
+
+.om-sa-screw-result > svg { margin-bottom: var(--motion-space-4); color: var(--motion-neutral-n0); }
+.om-sa-screw-result > :is(span, strong) {
+  width: 80%;
+  padding: var(--motion-space-4);
+  border-radius: var(--motion-radius-full);
+  text-align: center;
+  background: var(--motion-neutral-n10);
+}
+.om-sa-screw-result > strong { background: var(--motion-neutral-n1); color: var(--motion-neutral-n11); }
+
+@keyframes om-sa-screw-tap {
+  0%, 12% { transform: translate(24px, 26px); opacity: 0; }
+  21%, 30% { transform: translate(3px, 3px); opacity: 1; }
+  35% { transform: scale(.85); opacity: 1; }
+  45%, 100% { transform: translate(14px, 18px); opacity: 0; }
+}
+@keyframes om-sa-unscrew {
+  0%, 32%, 100% { transform: translate(-50%, -50%); opacity: 1; }
+  50% { transform: translate(-50%, -70%) rotate(-260deg) scale(1.12); opacity: 1; }
+  58%, 95% { transform: translate(-50%, -145%) rotate(-340deg); opacity: 0; }
+}
+@keyframes om-sa-plank-drop {
+  0%, 51%, 100% { transform: none; opacity: 1; }
+  56% { transform: translateY(5%) rotate(-7deg); opacity: 1; }
+  72%, 95% { transform: translateY(340%) rotate(-24deg); opacity: 0; }
+}
+@keyframes om-sa-screw-finish {
+  0%, 62%, 100% { opacity: 0; }
+  72%, 94% { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .om-sa-screw-preview * { animation: none; }
+  .om-sa-screw-pointer { display: none; }
+  .om-sa-screw-plank, .om-sa-screw-head { margin-top: -15%; }
+  .om-sa-screw-result { inset: auto 0 0; padding: var(--motion-space-8); }
+  .om-sa-screw-result > svg { display: none; }
 }
