@@ -962,6 +962,9 @@ function useIframePreviewBridge({
 
 function GameProjectArtifactView({
   artifact,
+  bundledMatch,
+  communityMatch,
+  isTrial,
   chatId,
   mode,
   viewport,
@@ -979,6 +982,9 @@ function GameProjectArtifactView({
   onBackgroundLoadingChange,
 }: {
   artifact: SuperAgentArtifact;
+  bundledMatch?: GameCard;
+  communityMatch?: GameCard;
+  isTrial: boolean;
   chatId: string | null;
   mode: 'preview' | 'code' | 'trailer';
   viewport: DesignViewportId;
@@ -997,18 +1003,9 @@ function GameProjectArtifactView({
 }) {
   const { t } = useI18n();
   const projectId = artifact.projectId || '';
-  const artifactGameId = projectId || (artifact.id.startsWith('game:') ? artifact.id.slice('game:'.length) : '');
   const presentedKey = artifact.presentedAt ?? '';
   const revisionKey = `${artifact.revision ?? ''}:${presentedKey}:${reloadKey}`;
 
-  const communityMatch = useMemo<GameCard | null>(
-    () => (!projectId && artifactGameId ? communityGames.find(item => item.id === artifactGameId) ?? null : null),
-    [projectId, artifactGameId],
-  );
-  const bundledMatch = useMemo<GameCard | null>(
-    () => (projectId ? bundledGames.find(item => item.id === projectId) ?? null : null),
-    [projectId],
-  );
   const [gameMeta, setGameMeta] = useState<GameCard | null>(null);
   const [bundledBlobUrl, setBundledBlobUrl] = useState<string | null>(null);
   const [handoffText, setHandoffText] = useState<string | null>(() => (projectId ? storedInstruction(projectId) : null));
@@ -1057,7 +1054,7 @@ function GameProjectArtifactView({
       cancelled = true;
       if (revoked) URL.revokeObjectURL(revoked);
     };
-  }, [projectId, revisionKey, bundledMatch]);
+  }, [artifact.id, projectId, revisionKey, bundledMatch, communityMatch]);
 
   const isDraftOrFailed = Boolean(
     projectId
@@ -1098,10 +1095,11 @@ function GameProjectArtifactView({
     return artifact.url || '';
   }, [bundledBlobUrl, projectId, artifact.url, artifact.revision, artifact.presentedAt, reloadKey]);
 
-  const effectiveMode: 'preview' | 'code' = projectId && mode === 'code' ? 'code' : 'preview';
+  const effectiveMode: 'preview' | 'code' = !isTrial && projectId && mode === 'code' ? 'code' : 'preview';
+  const canUsePreviewBridge = !isTrial && Boolean(projectId) && !bundledBlobUrl;
   const bridge = useIframePreviewBridge({
-    enabled: Boolean(projectId) && !bundledBlobUrl && !isDraftOrFailed && !isBuilding && mode === 'preview' && Boolean(previewUrl),
-    pickEnabled: annotateActive && Boolean(projectId) && mode === 'preview' && annotTool === 'select',
+    enabled: canUsePreviewBridge && !isDraftOrFailed && !isBuilding && mode === 'preview' && Boolean(previewUrl),
+    pickEnabled: canUsePreviewBridge && annotateActive && mode === 'preview' && annotTool === 'select',
     rawPreviewPath: previewUrl,
     chatId,
     pageTitle: artifact.title,
@@ -1110,7 +1108,7 @@ function GameProjectArtifactView({
   });
 
   const code = useInspectableCodeFiles({
-    enabled: Boolean(projectId) && mode === 'code',
+    enabled: effectiveMode === 'code',
     sourceKey: projectId,
     defaultPath: 'index.html',
     revisionKey,
@@ -1257,7 +1255,7 @@ function GameProjectArtifactView({
     <ProjectPreviewCodeView
       frameKey={frameKey}
       title={artifact.title}
-      previewUrl={isExternalGame || bundledBlobUrl ? previewUrl : (bridge.bridgedPreviewUrl || previewUrl)}
+      previewUrl={canUsePreviewBridge ? (bridge.bridgedPreviewUrl || previewUrl) : previewUrl}
       sandbox={
         isExternalGame
           ? 'allow-scripts allow-same-origin allow-pointer-lock allow-popups'
@@ -1276,7 +1274,7 @@ function GameProjectArtifactView({
       frameRef={bridge.frameRef}
       iframeRef={bridge.iframeRef}
       onIframeLoad={() => {
-        if (!isExternalGame && !bundledBlobUrl) bridge.syncPickMode();
+        if (canUsePreviewBridge) bridge.syncPickMode();
         if (pendingFrameFocusRef.current) {
           pendingFrameFocusRef.current = false;
           focusGameFrame();
@@ -1298,7 +1296,7 @@ function GameProjectArtifactView({
           }
           recordBrowserDiagnostic(
             'activity_iframe_slow',
-            `game=${artifactGameId || artifact.id} host=${host} revealAfterMs=${EXTERNAL_IFRAME_REVEAL_TIMEOUT_MS}`,
+            `game=${artifact.id.replace(/^game:/, '')} host=${host} revealAfterMs=${EXTERNAL_IFRAME_REVEAL_TIMEOUT_MS}`,
             '',
             `iframe-slow:${frameKey}`,
           );
@@ -1854,10 +1852,13 @@ export function ArtifactBrowserPane({
 }) {
   const { t } = useI18n();
   const [viewMode, setViewMode] = useState<'preview' | 'code' | 'trailer'>('preview');
-  const [gameTrailerUrl, setGameTrailerUrl] = useState<string | null>(null);
-  const [gameSourceKind, setGameSourceKind] = useState<GameCard['source'] | null>(null);
+  const [gameMetaEntry, setGameMetaEntry] = useState<{
+    artifactId: string;
+    trailerUrl: string | null;
+    source: GameCard['source'] | null;
+    multiplayer: boolean;
+  } | null>(null);
   const [gameFrameBackgroundLoading, setGameFrameBackgroundLoading] = useState(false);
-  const [multiplayerArtifactId, setMultiplayerArtifactId] = useState<string | null>(null);
   const [viewport, setViewport] = useState<DesignViewportId>('desktop');
   const [reloadKey, setReloadKey] = useState(0);
   const [webStateEntry, setWebStateEntry] = useState<{ artifactId: string; state: WebPageState } | null>(null);
@@ -1901,10 +1902,14 @@ export function ArtifactBrowserPane({
   const activeArtifact = showNewTab
     ? null
     : openTabs.find(item => item.id === activeTabId) ?? openTabs.at(-1) ?? null;
+  const activeGameProjectId = activeArtifact?.kind === 'game-project' ? activeArtifact.projectId : undefined;
+  const bundledMatch = activeGameProjectId ? bundledGames.find(game => game.id === activeGameProjectId) : undefined;
+  const gameMeta = gameMetaEntry && gameMetaEntry.artifactId === activeArtifact?.id ? gameMetaEntry : null;
+  const isGameTrial = activeArtifact?.kind === 'game-project' && (
+    !activeGameProjectId || Boolean(bundledMatch) || gameMeta?.source === 'template' || gameMeta?.source === 'community'
+  );
   // Game publish wizard: only local workspace game projects can be packaged/published to platforms.
-  const publishGameId = activeArtifact?.kind === 'game-project' && activeArtifact.projectId
-    ? activeArtifact.projectId
-    : '';
+  const publishGameId = isGameTrial ? undefined : activeGameProjectId;
   const publishSession = useGamePublishSession(publishGameId ? activeArtifact?.id : null);
   const publishPanelOpen = Boolean(publishGameId && publishSession?.open);
 
@@ -1946,8 +1951,6 @@ export function ArtifactBrowserPane({
       setBrowserMenuOpen(false);
       setConsoleEntries([]);
       setConsoleFilter('all');
-      setGameTrailerUrl(null);
-      setGameSourceKind(null);
       setGameFrameBackgroundLoading(false);
       setMotionSnapshot(null);
     }
@@ -1966,9 +1969,8 @@ export function ArtifactBrowserPane({
       if (activeArtifact.scenario === 'mobile-app') setViewport('mobile');
       else setViewport('desktop');
     } else if (activeArtifact.kind === 'game-project') {
-      setViewMode(keepingCodeTarget ? 'code' : 'preview');
-      if (activeArtifact.scenario === 'portrait') setViewport('mobile');
-      else setViewport('desktop');
+      setViewMode(keepingCodeTarget && !isGameTrial ? 'code' : 'preview');
+      setViewport(!isGameTrial && activeArtifact.scenario === 'portrait' ? 'mobile' : 'desktop');
     }
   }, [activeArtifact?.id]);
 
@@ -1981,6 +1983,10 @@ export function ArtifactBrowserPane({
     ) {
       return;
     }
+    if (isGameTrial) {
+      onConsumePendingCodeFile?.();
+      return;
+    }
     if (activeArtifact.kind !== 'motion-project') {
       setViewMode('code');
     }
@@ -1990,7 +1996,7 @@ export function ArtifactBrowserPane({
       seq: pendingCodeFile.seq,
     });
     onConsumePendingCodeFile?.();
-  }, [pendingCodeFile, activeArtifact, onConsumePendingCodeFile]);
+  }, [pendingCodeFile, activeArtifact, isGameTrial, onConsumePendingCodeFile]);
 
   useEffect(() => {
     if (!active) {
@@ -2034,37 +2040,24 @@ export function ArtifactBrowserPane({
     void webRef.current?.command('set-touch', touch).catch(() => {});
   }, [activeArtifact?.kind, activeArtifact?.id, webDevicePreset]);
 
-  // Bundled and community templates are play-and-remix previews: the editing tools
-  // (view mode, annotate, viewport, screenshot, console) only apply to the user's own games.
-  // External community games have no projectId; their reported source can be reset to null when the
-  // artifact switches, so treat any non-own game without a project as a template too.
-  const isTemplateGame = activeArtifact?.kind === 'game-project'
-    && (gameSourceKind === 'template' || gameSourceKind === 'community'
-      || (!activeArtifact.projectId && gameSourceKind !== 'mine'));
-
   // A template has no code view; if its source resolves while Code is open, return to Preview.
   useEffect(() => {
-    if (isTemplateGame && viewMode !== 'preview') setViewMode('preview');
-  }, [isTemplateGame, viewMode]);
+    if (isGameTrial && viewMode !== 'preview') setViewMode('preview');
+  }, [isGameTrial, viewMode]);
   const supportsAnnotate = Boolean(
     activeArtifact && (
       activeArtifact.kind === 'web'
       || (activeArtifact.kind === 'design-project' && (viewMode === 'preview' || !activeArtifact.projectId))
-      || (activeArtifact.kind === 'game-project' && Boolean(activeArtifact.projectId) && !isTemplateGame && viewMode === 'preview')
+      || (Boolean(activeGameProjectId) && !isGameTrial && viewMode === 'preview')
     ),
   );
   // Templates keep the viewport presets so players can try phone and tablet sizes.
-  const showViewportMenu = supportsAnnotate || (isTemplateGame && viewMode === 'preview');
+  const showViewportMenu = supportsAnnotate || (isGameTrial && viewMode === 'preview');
   const canCaptureScreenshot = supportsAnnotate && Boolean(onAttachBrowserAnnotation);
   const isMultiplayerGame = Boolean(activeArtifact?.kind === 'game-project' && (
-    activeArtifact.id === multiplayerArtifactId || isMultiplayerGameArtifact(activeArtifact)
+    bundledMatch?.multiplayer || gameMeta?.multiplayer || isMultiplayerGameArtifact(activeArtifact)
   ));
-  const toolbarGameAction = !showNewTab
-    && activeArtifact?.kind === 'game-project'
-    && (isTemplateGame || (!activeArtifact.projectId && gameSourceKind !== 'mine'))
-    && !isMultiplayerGame
-    ? onUseGameInAgent
-    : undefined;
+  const toolbarGameAction = isGameTrial && !isMultiplayerGame ? onUseGameInAgent : undefined;
 
   const webColorScheme: BrowserColorScheme = webState?.colorScheme ?? 'auto';
   const webZoom = webState?.zoom ?? 1;
@@ -2354,6 +2347,10 @@ export function ArtifactBrowserPane({
     { id: 'browser', label: 'Browser', icon: 'global-line', tone: 'video' },
   ];
 
+  const communityMatch = activeArtifact?.kind === 'game-project' && !activeArtifact.projectId
+    ? communityGames.find(game => `game:${game.id}` === activeArtifact.id)
+    : undefined;
+  const sourceCredit = communityMatch?.external;
   const externalHref = activeArtifact
     ? activeArtifact.kind === 'design-project' && activeArtifact.projectId
       ? designRoutes.raw(activeArtifact.projectId, activeArtifact.entry || 'index.html')
@@ -2607,8 +2604,7 @@ export function ArtifactBrowserPane({
 
         <div className="om-sa-context-actions">
           {(() => {
-            const hasModeSwitch = activeArtifact?.kind === 'design-project'
-              || (activeArtifact?.kind === 'game-project' && Boolean(activeArtifact.projectId) && !isTemplateGame);
+            const hasModeSwitch = activeArtifact?.kind === 'design-project' || Boolean(activeGameProjectId && !isGameTrial);
             const gamePublishId = activeArtifact?.kind === 'game-project'
               ? (activeArtifact.projectId || (activeArtifact.id.startsWith('game:') ? activeArtifact.id.slice('game:'.length) : ''))
               : '';
@@ -2628,7 +2624,7 @@ export function ArtifactBrowserPane({
             const viewModeOptions: Array<{ id: 'preview' | 'code' | 'trailer'; label: string; icon: string }> = [
               { id: 'preview', label: t('Preview'), icon: 'eye-line' },
               { id: 'code', label: t('Code'), icon: 'code-s-slash-line' },
-              ...(activeArtifact?.kind === 'game-project' && gameTrailerUrl
+              ...(activeArtifact?.kind === 'game-project' && gameMeta?.trailerUrl
                 ? [{ id: 'trailer' as const, label: t('Trailer'), icon: 'film-line' }]
                 : []),
             ];
@@ -3066,6 +3062,20 @@ export function ArtifactBrowserPane({
                   </Button>
                 )}
 
+                {sourceCredit && (
+                  <a
+                    href={sourceCredit.postUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    role="menuitem"
+                    className="om-sa-browser-menu-item"
+                    onClick={() => setBrowserMenuOpen(false)}
+                  >
+                    <RemixIcon name="external-link-line" size={14} />
+                    <span>{t('Original author · {author}', { author: sourceCredit.author })}</span>
+                  </a>
+                )}
+
                 {downloadHref && (
                   <a
                     href={downloadHref}
@@ -3081,7 +3091,7 @@ export function ArtifactBrowserPane({
 
                 {activeArtifact.kind !== 'web' && (
                   <>
-                    {(supportsAnnotate || externalHref || downloadHref)
+                    {(supportsAnnotate || externalHref || sourceCredit || downloadHref)
                       // Games only have "Open in Game Studio" below; skip the separator when it is absent.
                       && (activeArtifact.kind !== 'game-project' || Boolean(activeArtifact.projectId && onOpenInGameStudio)) && (
                       <div role="separator" />
@@ -3560,12 +3570,15 @@ export function ArtifactBrowserPane({
         ) : activeArtifact.kind === 'game-project' && (activeArtifact.projectId || activeArtifact.url) ? (
           <GameProjectArtifactView
             artifact={activeArtifact}
+            bundledMatch={bundledMatch}
+            communityMatch={communityMatch}
+            isTrial={isGameTrial}
             chatId={chatId}
-            mode={viewMode}
+            mode={isGameTrial ? 'preview' : viewMode}
             viewport={viewport}
             reloadKey={reloadKey}
             requestedCodeFile={requestedCodeFile?.artifactId === activeArtifact.id ? requestedCodeFile : null}
-            annotateActive={annotateActive}
+            annotateActive={supportsAnnotate && annotateActive}
             annotTool={annotTool}
             onToolChange={setAnnotTool}
             onConsoleEntry={pushPreviewConsoleEntry}
@@ -3573,11 +3586,7 @@ export function ArtifactBrowserPane({
             onSubmitAnnotation={handleSubmitBrowserAnnotation}
             onCloseAnnotate={() => setAnnotateActive(false)}
             onNotify={onNotify}
-            onGameMeta={meta => {
-              setGameTrailerUrl(meta.trailerUrl);
-              setGameSourceKind(meta.source);
-              setMultiplayerArtifactId(meta.multiplayer ? activeArtifact.id : null);
-            }}
+            onGameMeta={meta => setGameMetaEntry({ artifactId: activeArtifact.id, ...meta })}
             onBackgroundLoadingChange={setGameFrameBackgroundLoading}
           />
         ) : activeArtifact.kind === 'web' && activeArtifact.url && chatId ? (
@@ -3636,7 +3645,7 @@ export function ArtifactBrowserPane({
           </div>
         )}
         </div>
-        {publishPanelOpen && activeArtifact && (
+        {publishPanelOpen && publishGameId && activeArtifact && (
           <GamePublishPanel
             artifactId={activeArtifact.id}
             coverUrl={`/motion-api/games/${encodeURIComponent(publishGameId)}/play/assets/cover.png`}

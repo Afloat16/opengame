@@ -4,7 +4,7 @@ import { motionApi } from '../useWorkspace';
 export const genreLabels: Record<GameGenre, string> = gameGenreLabels;
 export const styleLabels: Record<GameStyle, string> = { pixel: 'Pixel art', minimal: 'Minimalist', ascii: 'ASCII art', voxel: 'Voxel', anime: 'Anime', '3d': '3D' };
 export const settingLabels: Record<GameSetting, string> = { medieval: 'Medieval', cyberpunk: 'Cyberpunk', retro: 'Retro', modern: 'Modern', space: 'Outer space', fantasy: 'Fantasy' };
-/** Example briefs shown as the input placeholder for each genre. */
+/** Example briefs for each genre and the generic game input placeholder. */
 export const genrePlaceholders: Record<GameGenre | 'none', string> = {
   none: 'Describe the game you want to make',
   shooter: 'A wave shooter where you defend a space station',
@@ -98,6 +98,7 @@ export const isLocalOnly = (url: string) => url.startsWith('blob:') || /^https?:
 const optionArt = import.meta.glob('./art/*.webp', { eager: true, query: '?url', import: 'default' }) as Record<string, string>;
 const art = (name: string) => optionArt[`./art/${name}.webp`] ?? null;
 export const genreCovers = Object.fromEntries(gameGenres.map(genre => [genre, art('genre-' + genre)])) as Record<GameGenre, string | null>;
+export const genreHomeCovers = Object.fromEntries(gameGenres.map(genre => [genre, art('genre-home-' + genre) ?? genreCovers[genre]])) as Record<GameGenre, string | null>;
 export const styleCovers = Object.fromEntries(gameStyles.map(style => [style, art('style-' + style)])) as Record<GameStyle, string | null>;
 export const settingCovers = Object.fromEntries(gameSettings.map(setting => [setting, art('setting-' + setting)])) as Record<GameSetting, string | null>;
 
