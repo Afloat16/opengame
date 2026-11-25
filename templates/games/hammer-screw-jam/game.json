@@ -1,0 +1,30 @@
+{
+  "id": "hammer-screw-jam",
+  "title": "Hammer & Screw Jam",
+  "description": "Unscrew bolts from overlapping steel plates and wooden boards in exact sequence so every heavy plank tumbles cleanly off the wall.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap a screw to pick it up, then tap an open hole to relocate it until all boards drop free.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "玩了个锤子打螺丝",
+      "description": "微信热榜超火打螺丝玩了个锤子：拆下螺丝挪进空洞，让层层卡住的木板铁片哗啦啦全部掉落，极度上头解压！",
+      "controls": "点击选中螺丝并移入空闲螺孔，巧妙腾位让所有被卡住的木板全部掉落清空。"
+    }
+  }
+}

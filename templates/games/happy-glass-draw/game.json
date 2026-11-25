@@ -1,0 +1,30 @@
+{
+  "id": "happy-glass-draw",
+  "title": "Happy Glass Draw",
+  "description": "Sketch clever physics bridges and funnels with a single pencil stroke to channel rushing water into an empty smiling glass for three-star perfection.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Press and drag to draw solid pencil lines that guide falling water smoothly into the cup up to the dotted fill line.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "欢乐水杯画线",
+      "description": "全球亿级下载经典物理画线欢乐水杯：用一支铅笔自由画线搭建导流槽，把清水精准引入空水杯让它开心大笑，画得越短星级越高！",
+      "controls": "按住屏幕自由画线搭建物理滑道，引导水流灌满下方水杯至虚线以上即可三星通关。"
+    }
+  }
+}

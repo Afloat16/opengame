@@ -1,0 +1,30 @@
+{
+  "id": "block-gem-clear",
+  "title": "Block Gem Clear",
+  "description": "Fit sparkling jewel polyominoes into an 8x8 board to shatter glowing lines and chain huge gemstone combos.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag jewel shapes onto open grid slots to complete full rows or columns and rack up combos.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "方块宝石消除",
+      "description": "璀璨宝石风方块宝石消除：拖拽闪耀宝石积木填满整行或整列瞬间粉碎，手感脆爽无限畅玩！",
+      "controls": "拖动宝石积木放进棋盘空位，填满整行或整列即可触发璀璨消除得分。"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "save-girl-draw",
+  "title": "Save the Girl Draw",
+  "description": "Sketch instant protective shields and clever paths to guard the heroine from falling hazards, rolling boulders, and mischievous traps.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Draw a continuous line to block incoming dangers or guide the character safely past traps.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "画线救女孩",
+      "description": "超火益智物理画线救女孩：危急关头一笔画线挡住滚石毒蜂与机关陷阱，用你的神笔操作护送女孩安全通关！",
+      "controls": "按住拖动画出线条挡住高空坠物与陷阱机关，坚持倒计时结束即成功过关。"
+    }
+  }
+}

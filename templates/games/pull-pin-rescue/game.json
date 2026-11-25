@@ -1,0 +1,30 @@
+{
+  "id": "pull-pin-rescue",
+  "title": "Pull the Pin Rescue",
+  "description": "Slide golden pins in the smartest order to extinguish flames, neutralize monsters, drop treasure safely, and pull our heroine out of danger.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap or pull pins in the right sequence so hazards cancel out and the character reaches safety.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "拔针帮她脱险",
+      "description": "买量点击率王者拔针帮她脱险：仔细思考插销拔出顺序，用水灭岩浆、用机关消灭怪物，顺利救出被困小姐姐！",
+      "controls": "点击拔出正确的金属插销，巧妙引导水流化解陷阱怪物，帮主角顺利脱险。"
+    }
+  }
+}

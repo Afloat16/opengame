@@ -1,0 +1,30 @@
+{
+  "id": "paper-maze-klotski",
+  "title": "Paper Maze Klotski",
+  "description": "Immerse yourself in exquisite storybook paper-cut art—slide ornate blocks across atmospheric puzzle boards to guide the hero through mysterious realms.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Slide rectangular paper blocks horizontally or vertically to clear a path for the hero piece to exit.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "纸中迷境华容道",
+      "description": "高颜值国风剪纸美学纸中迷境华容道：精致纸雕画风配经典滑块华容道解谜，步步推演打开迷境通途！",
+      "controls": "上下左右滑动精致的纸雕模块腾出空间，引导主角木块顺利滑出迷境出口。"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "unbolt-escape-jam",
+  "title": "Unbolt Escape Jam",
+  "description": "Twist free trapped latches, iron bars, and color-coded bolts to spring open every locked contraption and break out cleanly.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap bolts and empty sockets strategically to detach every locking bar blocking your escape.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "关不住我拆锁",
+      "description": "魔性拆螺丝闯关关不住我：拧松层层铁锁与机关螺栓，破解严密机关顺利脱身，节奏紧凑越玩越爽！",
+      "controls": "点击拆移关键螺栓到空孔，卸掉所有挡路铁片机关即可成功脱困。"
+    }
+  }
+}

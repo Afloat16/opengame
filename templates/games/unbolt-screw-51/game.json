@@ -1,0 +1,30 @@
+{
+  "id": "unbolt-screw-51",
+  "title": "Screw Unbolt 51",
+  "description": "Tackle 51 escalating mechanical unbolting puzzles—relocate bolts smartly without jamming holes so every interlocked plate drops clear.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap any bolt and move it to an empty socket to free overlapping plates and clear the puzzle.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "拆螺丝 51 关",
+      "description": "经典烧脑物理拆解拆螺丝 51 关：精挑细选 51 个层层递进的拧螺丝挑战，步步为营拆光铁板越玩越停不下来！",
+      "controls": "点击螺丝移至空位孔洞，逐层释放交错叠加的金属板直至全部掉落通关。"
+    }
+  }
+}

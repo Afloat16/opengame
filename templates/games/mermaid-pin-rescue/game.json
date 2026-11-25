@@ -1,0 +1,30 @@
+{
+  "id": "mermaid-pin-rescue",
+  "title": "Mermaid Pin Rescue",
+  "description": "Solve 20 handcrafted undersea pin-pulling puzzles—divert sharks and lava while guiding sparkling ocean water safely to reunite the little mermaid.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap pins to remove barriers in sequence, neutralize ocean traps, and rescue the mermaid.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "美人鱼拔针救援",
+      "description": "海底奇幻主题美人鱼拔针救援 20 关：巧妙拉动海宫插销挡住鲨鱼与毒液、放水营救被困美人鱼，关卡精致又烧脑！",
+      "controls": "按逻辑顺序点击拔除插销，隔离危险生物并引流清水救出小美人鱼。"
+    }
+  }
+}

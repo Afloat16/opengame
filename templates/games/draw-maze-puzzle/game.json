@@ -1,0 +1,30 @@
+{
+  "id": "draw-maze-puzzle",
+  "title": "Draw Maze Puzzle",
+  "description": "Trace non-crossing paths connecting every character to their matching goal without collisions—a snappy spatial rush-to-goal brain-teaser.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag from each character to their matching destination icon while avoiding obstacles and mid-path collisions.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "画线迷宫",
+      "description": "魔性烧脑路径规划画线迷宫：为多位角色分别画出通往终点的路线，绕开墙壁障碍且绝不撞车，一气呵成超解压！",
+      "controls": "从角色出发拖动连线至对应终点，注意规划先后路线避免互相碰撞即可通关。"
+    }
+  }
+}
