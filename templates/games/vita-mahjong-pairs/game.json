@@ -1,0 +1,30 @@
+{
+  "id": "vita-mahjong-pairs",
+  "title": "Vita Mahjong Pairs",
+  "description": "Relax with crisp oversized Mahjong tiles inspired by the global Vita Mahjong phenomenon—pair matching free tiles cleanly across layered boards to clear every handcrafted layout.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "retro",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap two identical uncovered Mahjong tiles with at least one open side to match and clear them from the board.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "麻将对对碰 Vita",
+      "description": "海外长青榜霸榜神作 Vita 大字麻将对对碰：清晰大牌面一眼看清，轻松配对消除多层国风麻将牌局，老少皆宜超解压！",
+      "controls": "点击两张相同且未被左右夹住或遮挡的大号麻将牌即可配对消除，清空整盘牌面通关。"
+    }
+  }
+}

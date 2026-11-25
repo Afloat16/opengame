@@ -1,0 +1,30 @@
+{
+  "id": "dino-island-3d",
+  "title": "Dino Island 3D",
+  "description": "Explore a vibrant 3D prehistoric island, hatch adorable dinosaurs, gather resources, unlock new enclosures, and expand your bustling Jurassic park empire.",
+  "genre": "casual",
+  "style": "3d",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag the virtual joystick to move your explorer around the island, harvest resources, and step onto unlock pads to build dinosaur habitats.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "恐龙大陆 3D 经营",
+      "description": "3D 史前恐龙岛模拟经营：探索神秘大陆、孵化呆萌恐龙、采集资源扩建园区，亲手打造人山人海的侏罗纪乐园！",
+      "controls": "滑动虚拟摇杆控制主角在岛上移动采集资源，踩踏解锁区域不断建造恐龙栖息地扩建乐园。"
+    }
+  }
+}

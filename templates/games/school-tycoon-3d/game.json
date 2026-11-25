@@ -1,0 +1,30 @@
+{
+  "id": "school-tycoon-3d",
+  "title": "Campus Tycoon 3D",
+  "description": "Build and manage your dream campus from a single classroom into a bustling academy—enroll students, upgrade lecture halls and sports fields, and grow your tuition empire.",
+  "genre": "casual",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap facilities to expand classrooms, hire teachers, collect tuition income, and upgrade campus zones.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "校园大亨模拟器",
+      "description": "超上头 3D 校园模拟经营：从一间小教室起步，招生上课、扩建操场食堂与宿舍楼，一路升级打造顶级名校帝国！",
+      "controls": "点击扩建教室与校园设施、招募名师并收取学费收益，持续升级打造顶级校园。"
+    }
+  }
+}

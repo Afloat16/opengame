@@ -1,0 +1,30 @@
+{
+  "id": "giant-rush-3d",
+  "title": "Giant Rush 3D",
+  "description": "Sprint down vibrant 3D obstacle lanes, collect same-colored stickmen to bulk up into a towering colossus, smash through brick walls, and KO the rival boss at the finish.",
+  "genre": "platformer",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag left and right to steer your runner through matching color crowds, dodge hazards, and tap rapidly in the final boss clash.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "奔跑吧巨人 3D",
+      "description": "全球超休闲亿级爆款奔跑吧巨人：赛道吃同色小人疯狂变大变强，撞碎障碍一路狂飙到终点一拳打飞大 Boss！",
+      "controls": "按住左右滑动吸收同色小人壮大体型，躲避异色陷阱并在终点连点暴揍巨型 Boss。"
+    }
+  }
+}

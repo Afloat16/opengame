@@ -1,0 +1,30 @@
+{
+  "id": "catch-goose-3d",
+  "title": "Catch the Goose 3D",
+  "description": "Rummage through a bustling 3D pile of everyday props and farm items, match three identical objects in your tray, and clear the entire mountain to catch the elusive big goose.",
+  "genre": "casual",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap 3D objects in the pile to send them into your bottom tray; match three identical items to clear them before the tray fills up.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "抓大鹅 3D",
+      "description": "微信畅玩榜现象级爆款抓大鹅 3D：在堆满立体萌物的 3D 大盆里眼疾手快挑出三个相同物品消除，清空全场抓住大鹅！",
+      "controls": "点击盆中立体物品放入下方槽位，凑齐三个相同物品即可消除，清空全部关卡道具即可通关抓鹅。"
+    }
+  }
+}

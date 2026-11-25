@@ -1,0 +1,30 @@
+{
+  "id": "boba-tea-adventure",
+  "title": "Boba Tea Adventure",
+  "description": "Mix chewy pearls, creamy milk tea, and colorful toppings across fast-paced beverage orders—serve eager customers and unlock trendy new boba recipes.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap ingredients and cup stations to craft customer orders quickly and clear each lively shop stage.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "奶茶大冒险",
+      "description": "超治愈爆款奶茶店闯关冒险：调配波霸珍珠、芝士奶盖与缤纷果茶，手速爆表服务排队顾客解锁全套网红爆款配方！",
+      "controls": "点击选择茶底、珍珠与配料调制顾客指定的奶茶饮品，快速出餐完成关卡目标。"
+    }
+  }
+}

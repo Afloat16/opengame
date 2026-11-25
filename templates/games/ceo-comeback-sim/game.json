@@ -1,0 +1,30 @@
+{
+  "id": "ceo-comeback-sim",
+  "title": "CEO Comeback Sim",
+  "description": "Start from rock bottom and climb the corporate ladder—make sharp office choices, crush rival schemes, build business ventures, and rise into an unstoppable billionaire CEO.",
+  "genre": "story",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap choices, complete business tasks, and invest earnings to boost your career rank and wealth.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "霸总职场逆袭",
+      "description": "抖音爽文题材爆款职场逆袭：从底层打工人开局，精准抉择职场危机、投资创业一路打脸逆袭成为顶级商业霸总！",
+      "controls": "点击做出关键职场与商业抉择，完成逆袭任务积累资产，一路升职加薪成为商业霸总。"
+    }
+  }
+}

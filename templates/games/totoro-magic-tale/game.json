@@ -1,0 +1,30 @@
+{
+  "id": "totoro-magic-tale",
+  "title": "Forest Spirit Magic",
+  "description": "Step into a whimsical enchanted forest—cast cozy spells, gather glowing acorns, and solve charming woodland puzzles with magical companions.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap magical tiles and forest companions to trigger combos and clear every enchanted stage.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "森林魔法物语",
+      "description": "吉卜力风治愈奇幻森林魔法物语：携手呆萌森林精灵施展魔法、收集闪亮松果与宝物，开启梦幻林间物语！",
+      "controls": "点击屏幕触发魔法消除与精灵技能，完成奇幻森林各关冒险目标。"
+    }
+  }
+}

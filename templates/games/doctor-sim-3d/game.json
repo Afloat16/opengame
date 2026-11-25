@@ -1,0 +1,30 @@
+{
+  "id": "doctor-sim-3d",
+  "title": "Doctor Sim 3D",
+  "description": "Step into the ER as a hands-on clinic doctor—diagnose quirky symptoms, apply bandages and treatments with satisfying 3D tools, and send every patient home smiling.",
+  "genre": "casual",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag medical instruments onto highlighted treatment spots and follow on-screen prompts to heal each patient.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "趣味医生模拟器",
+      "description": "抖音爆火解压 3D 医生模拟：化身全能急诊大夫，用镊子听诊器与药水逐一治愈奇葩病例，强迫症看了极度舒适！",
+      "controls": "按提示拖动医疗器械对准病灶部位进行操作治疗，顺利治愈每一位前来就诊的病人。"
+    }
+  }
+}
