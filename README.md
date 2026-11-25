@@ -3,7 +3,7 @@
 <p align="center"><strong>The First Super Game Agent — Open-Source Full-Stack AI Game Studio</strong></p>
 
 <p align="center">
-  <img src="docs/readme/opengame-hero.webp" width="100%" alt="OpenGame — The First Super Game Agent. Remix, re-style, test, and publish playable 3D, anime, pixel, and 9:16 mini-games from 26 built-in playable templates across 22 local AI agents.">
+  <img src="docs/readme/opengame-hero.webp" width="100%" alt="OpenGame — The First Super Game Agent. Remix, re-style, test, and publish playable 3D, anime, pixel, and 9:16 mini-games from 25 built-in playable templates across 22 local AI agents.">
 </p>
 
 <p align="center">
@@ -33,7 +33,7 @@
 
 OpenGame is **the first Super Game Agent** — turning your local coding agent into an open-source AI Unreal Engine / Unity and full-stack game studio, taking you from a single prompt or viral game template all the way to automated QA, instant web sharing, and monetization-ready builds.
 
-- 🎮 **One-Click Remix Any Game.** **26 built-in playable templates** (3D, voxel, anime, pixel & 9:16 mini-games / playable ads) with full editable source and design specs.
+- 🎮 **One-Click Remix Any Game.** **25 built-in playable templates** (3D, voxel, anime, pixel & 9:16 mini-games / playable ads) with full editable source and design specs.
 - 🎨 **One-Click Re-style Any Game.** Keep a proven game loop while swapping characters, art style, and audio — affordable models like **DeepSeek** ship polished reskins fast, while **Claude Fable 5.2**, **Opus**, **Codex**, and **Gemini** build original 3D worlds from scratch.
 - 💰 **End-to-End Pipeline: Build → Verify → Publish & Monetize.** Automated validation, simulation, headless playtesting, cover capture, and trailers — ship a live web link, a 9:16 Playable Ad, or mini-game platform builds.
 - 🔓 **Full-Stack Open Source (BYOA + BYOK).** Code, art, video, music, voice, SFX, and Three.js 3D are all open source. Bring [your local agent](#agent-wall) and keys, or connect [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=opengame&utm_content=readme_en).
@@ -82,7 +82,7 @@ npm start
 
 ## 🕹️ Playable Game Templates & Showcase
 
-OpenGame ships with **26 ready-to-play games** right inside [`templates/games/`](templates/games/) — complete with playable HTML5 / Three.js source, artwork, controls, and localization. Play them locally in Game Studio, **Remix** any title with one click, or **Re-style** it into your own IP, theme, or brand.
+OpenGame ships with **25 ready-to-play games** right inside [`templates/games/`](templates/games/) — complete with playable HTML5 / Three.js source, artwork, controls, and localization. Play them locally in Game Studio, **Remix** any title with one click, or **Re-style** it into your own IP, theme, or brand.
 
 ### 3D, Voxel & Action Games (16:9)
 
@@ -232,7 +232,7 @@ Bake dough, merge matching pastries, and serve timed customer orders to hit \$25
 </table>
 
 <details>
-<summary><strong>Browse all 26 built-in playable game templates</strong></summary>
+<summary><strong>Browse all 25 built-in playable game templates</strong></summary>
 
 | Game | Genre | Style | Format | Summary | Source |
 | --- | --- | --- | --- | --- | --- |
@@ -242,7 +242,6 @@ Bake dough, merge matching pastries, and serve timed customer orders to hit \$25
 | **Gate Legion** | Casual | Pixel | 9:16 Portrait | Viral arithmetic-gate squad multiplier & boss clash | [gate-legion](templates/games/gate-legion/) |
 | **Glyph Garden** | Casual | Anime | 16:9 Landscape | Cascading fantasy match-3 bloom puzzle | [glyph-garden](templates/games/glyph-garden/) |
 | **Harbor Skirmish** | Shooter | 3D | 16:9 Landscape | Stylized 3D FPS with double-jump, slide, dash, and grapple | [harbor-skirmish](templates/games/harbor-skirmish/) |
-| **Hollow Signal** | Horror | Minimal | 16:9 Landscape | Static-tuning radio horror before sanity fades | [hollow-signal](templates/games/hollow-signal/) |
 | **Jingyang Ridge** | Casual | Anime | 16:9 Landscape | Ink-wash martial arts boss duel — read tells, dodge lanes, punish | [jingyang-ridge](templates/games/jingyang-ridge/) |
 | **Lane Turret** | Shooter | Pixel | 9:16 Portrait | Auto-turret wave defense with upgrade cards | [lane-turret](templates/games/lane-turret/) |
 | **Lantern Hop** | Platformer | Pixel | 16:9 Landscape | Moonlit rooftop fox endless double-jump runner | [lantern-hop](templates/games/lantern-hop/) |
@@ -274,7 +273,7 @@ Bake dough, merge matching pastries, and serve timed customer orders to hit \$25
 Building a polished game from a blank prompt is hard for any model. OpenGame solves this by separating **verified game engineering** from **theme, art direction, and content**:
 
 - **Every game is clean, inspectable source**: `index.html`, deterministic `logic.js`, vendored Three.js for 3D titles, plus structured design docs (`design/plan.md`, `design/style.md`, `design/assets.csv`, `design/verification.md`).
-- **Remix in one click**: Click **Remix** on any of the 26 templates in Game Studio (or ask your agent to remix it) to fork an owned, editable draft with full controls, tuning knobs, and automated test hooks already wired up.
+- **Remix in one click**: Click **Remix** on any of the 25 templates in Game Studio (or ask your agent to remix it) to fork an owned, editable draft with full controls, tuning knobs, and automated test hooks already wired up.
 - **Re-style into any universe**: Swap genre dressing, characters, palette, sprites, textures, and music without breaking physics or win/loss rules — ideal for fast iteration with affordable models like **DeepSeek**, or pushing AAA-grade 3D & shader ambition with **Claude Fable 5.2**, **Opus**, **Codex**, and **Gemini**.
 
 **Try these prompts in your connected Agent:**
@@ -448,7 +447,7 @@ Every connected agent can read [`skills/openmotion-game/SKILL.md`](skills/openmo
 | **Game Runtime & QA** | Node.js, native HTTP, Puppeteer Core / Chrome, deterministic simulator | [game-projects.ts](game-projects.ts) · [shared/game-contract.ts](shared/game-contract.ts) · [server.ts](server.ts) |
 | **MCP & Agent Skills** | Local stdio MCP server, `openmotion-game` Skill & 18 handbooks | [mcp.ts](mcp.ts) · [skills/openmotion-game/](skills/openmotion-game/) |
 | **Multimodal Gateway** | BYOK model discovery, job polling, asset library & web publish | [gateway/service.ts](gateway/service.ts) · [gateway/catalog.ts](gateway/catalog.ts) · [docs/assets.md](docs/assets.md) |
-| **Playable Templates** | 26 standalone HTML5 / Canvas / Three.js games with covers & metadata | [templates/games/](templates/games/) |
+| **Playable Templates** | 25 standalone HTML5 / Canvas / Three.js games with covers & metadata | [templates/games/](templates/games/) |
 | **Trailer Pipeline** | Headless gameplay capture + HTML composition + FFmpeg MP4 export | [docs/usage.md](docs/usage.md) · [scripts/verify-export.ts](scripts/verify-export.ts) |
 
 <a id="community"></a>
