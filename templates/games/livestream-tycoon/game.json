@@ -1,0 +1,30 @@
+{
+  "id": "livestream-tycoon",
+  "title": "Livestream Tycoon",
+  "description": "Launch your own viral streaming studio—upgrade mics and lighting, recruit charismatic hosts, ride trending topics, and watch viewer gifts rocket into the millions.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap to stream, upgrade studio equipment, unlock hot topics, and collect fan donations to expand your MCN agency.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "我要开直播",
+      "description": "抖音超火网红养成模拟我要开直播：搭建豪华直播间、签约人气主播带货涨粉，刷爆礼物弹幕一路赚成顶流大网红！",
+      "controls": "点击开播互动、升级直播设备与招募主播团队，狂揽打赏收益打造顶流直播帝国。"
+    }
+  }
+}

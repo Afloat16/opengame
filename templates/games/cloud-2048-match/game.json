@@ -1,0 +1,30 @@
+{
+  "id": "cloud-2048-match",
+  "title": "Cloud 2048 Match",
+  "description": "Drop fluffy sky-blue number tiles onto dreamy cloud columns—chain cascading 2048 merges in a soothing, ultra-smooth arcade puzzler.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap a column to drop the active number tile onto matching numbers and chain higher merges.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "浮云 2048 消消乐",
+      "description": "清新治愈浮云 2048 消消乐：在蓝天白云间落下数字云朵触发连锁合成升级，轻松合出 2048 超级减压！",
+      "controls": "点击任意一列投放数字方块，相同数字碰撞自动合体升级冲击 2048 以上高分。"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "winter-skydive-3d",
+  "title": "Winter Skydive 3D",
+  "description": "Leap into crisp alpine skies, glide through glowing aerial rings, steer past snowy peaks, and nail a bullseye parachute touchdown.",
+  "genre": "casual",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag to steer your skydiver through score rings and guide your parachute cleanly onto the landing target.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "冬日极限跳伞",
+      "description": "清爽畅快 3D 冬日极限跳伞：从雪山高空纵身跃下，穿梭空中光环躲避冰峰，精准控伞稳稳降落靶心赢高分！",
+      "controls": "拖动屏幕控制跳伞角色穿过空中得分环，避开雪山障碍精准降落在靶心区域。"
+    }
+  }
+}

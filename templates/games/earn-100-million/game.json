@@ -1,0 +1,30 @@
+{
+  "id": "earn-100-million",
+  "title": "Earn 100 Million",
+  "description": "Start with pocket change and hunt market bargains—buy low, sell high across quirky commodities, invest in booming industries, and race to hit your first 100 million.",
+  "genre": "story",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap market listings to buy undervalued goods, advance days to watch prices swing, and invest profits into businesses.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "挣他一个亿",
+      "description": "现象级魔性经商模拟挣他一个亿：低买高卖倒腾爆款商品、抓准市场行情投资开公司，立个小目标先挣他一个亿！",
+      "controls": "低价买入热门货物、高价抛售赚取差价，投资实业资产冲击先挣一个亿的小目标。"
+    }
+  }
+}

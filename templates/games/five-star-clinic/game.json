@@ -1,0 +1,30 @@
+{
+  "id": "five-star-clinic",
+  "title": "Five-Star Clinic Tycoon",
+  "description": "Turn a humble neighborhood clinic into a bustling five-star medical center—hire quirky doctors, unlock specialty wards, cure hilarious patients, and watch profits soar.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap to build departments, upgrade medical beds, hire staff, and collect consultation earnings from cured patients.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "五星卫生院",
+      "description": "微信爆款模拟经营五星卫生院：把小小社区卫生站一步步扩建成五星医院，招募神医、扩建科室治病赚钱爽翻天！",
+      "controls": "点击扩建诊室与病床、招募医护人员接诊奇葩病人，赚取诊费升级打造五星医院。"
+    }
+  }
+}

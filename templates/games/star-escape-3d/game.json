@@ -1,0 +1,30 @@
+{
+  "id": "star-escape-3d",
+  "title": "Star Escape 3D",
+  "description": "Pilot a sleek starship weaving through neon asteroid rings and orbital tunnels—dodge energy barriers at hyperspeed and chase cosmic distance records.",
+  "genre": "racing",
+  "style": "3d",
+  "setting": "space",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag left and right to bank your starship around space obstacles and collect energy boosts.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "星际逃逸 3D",
+      "description": "科幻炫酷 3D 星际逃逸：驾驶星际战机穿梭霓虹陨石带与太空隧道，极速闪避激光障碍刷新光年纪录！",
+      "controls": "左右滑动操控飞船在太空赛道灵活闪避陨石与障碍，拾取加速能量冲刺高分。"
+    }
+  }
+}

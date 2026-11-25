@@ -1,0 +1,30 @@
+{
+  "id": "grab-a-baozi",
+  "title": "Grab a Baozi",
+  "description": "Time your wooden chopsticks with razor precision to snatch steaming baozi dumplings off a rotating steamer before the timer runs out.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap at the right moment to snap your chopsticks closed and pick up passing steamed buns for bonus streaks.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "夹个包子",
+      "description": "魔性搞笑手速小游戏夹个包子：盯紧热气腾腾的蒸笼，看准时机出筷精准夹起美味大肉包，连夹暴击超欢乐！",
+      "controls": "看准时机点击屏幕出筷夹取蒸笼里的美味包子，连续命中触发高分连击。"
+    }
+  }
+}

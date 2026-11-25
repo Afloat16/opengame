@@ -1,0 +1,30 @@
+{
+  "id": "color-jump-arcade",
+  "title": "Color Jump Switch",
+  "description": "Tap to bounce a glowing ball upward and pass cleanly ONLY through segments matching your current neon color—one mistake shatters everything!",
+  "genre": "platformer",
+  "style": "minimal",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap to hop upward through rotating color wheels matching your ball's hue while collecting stars.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "色彩跳跃挑战",
+      "description": "全球亿级极简神作色彩跳跃 Color Switch：轻点跳跃只穿同色旋转色环，节奏精准魔性到停不下来！",
+      "controls": "点击屏幕控制彩球向上弹跳，精准穿过与小球颜色相同的旋转色带收集星星。"
+    }
+  }
+}

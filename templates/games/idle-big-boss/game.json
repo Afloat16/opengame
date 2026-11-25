@@ -1,0 +1,30 @@
+{
+  "id": "idle-big-boss",
+  "title": "Idle Big Boss",
+  "description": "Grow a sprawling business empire with effortless idle taps—open shops, hire managers to automate cash flow, and scale from street vendor to billionaire tycoon.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap to launch businesses, upgrade storefronts, hire managers, and collect booming cash stacks.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "放置大老板",
+      "description": "超上头模拟经营放置大老板：开连锁店铺、雇佣金牌店长自动收钱，挂机躺赢一路买楼扩产变身亿万大老板！",
+      "controls": "点击开设并升级各类商铺、招募经理自动创收，轻松挂机扩张商业版图。"
+    }
+  }
+}

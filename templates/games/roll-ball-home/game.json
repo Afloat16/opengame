@@ -1,0 +1,30 @@
+{
+  "id": "roll-ball-home",
+  "title": "Roll Ball Home",
+  "description": "Tilt, steer, and time ramps to guide a lively rolling sphere across clever 3D puzzle tracks all the way safely into the glowing home goal.",
+  "genre": "casual",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag to steer the rolling ball across bridges, switches, and ramps until it reaches the home portal.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "球球要回家",
+      "description": "精巧解压 3D 滚动解谜球球要回家：巧妙操控弹力小球翻越机关坡道、避开陷阱沟壑，一路滚进终点小家！",
+      "controls": "滑动屏幕控制小球滚动方向，越过机关陷阱滚入终点传送门即可通关。"
+    }
+  }
+}
