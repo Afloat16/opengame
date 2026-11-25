@@ -37,7 +37,7 @@ export class AssetLibrary {
   async list(input: AssetListInput = {}, { maxPageSize = 100 } = {}) {
     const { offset = 0, limit = 60 } = input;
     if (!Number.isInteger(offset) || offset < 0 || !Number.isInteger(limit) || limit < 1 || limit > maxPageSize) throw new Error('Invalid asset pagination');
-    if (input.modality && !['image', 'video', 'audio'].includes(input.modality)
+    if (input.modality && !['image', 'video', 'audio', '3d'].includes(input.modality)
       || input.audioKind && !AUDIO_KINDS.includes(input.audioKind)
       || input.source && !['upload', 'generated'].includes(input.source)
       || input.sort && !['newest', 'oldest', 'name'].includes(input.sort) || input.query && (typeof input.query !== 'string' || input.query.length > 200)) throw new Error('Invalid asset filter');
@@ -146,8 +146,12 @@ export class AssetLibrary {
           ? input.version.audioKind
           : classifyAudioKind(input.version.model, undefined, input.version.source))
         : undefined;
+      const mergedResult = media.result
+        ? { ...(input.version.result ?? {}), ...media.result }
+        : input.version.result;
       const version: AssetVersion = { ...input.version, id: versionId, createdAt: now, filename, name: input.name, mimeType: media.mimeType, bytes, sha256,
         ...(media.width ? { width: media.width, height: media.height } : {}), ...(media.duration ? { duration: media.duration } : {}), ...(media.waveform ? { waveform: media.waveform } : {}),
+        ...(mergedResult ? { result: mergedResult } : {}),
         ...(resolvedAudioKind ? { audioKind: resolvedAudioKind } : {}) };
       const asset: LibraryAsset = existing ?? { id, name: assetName(input.name), modality: media.modality, createdAt: now, updatedAt: now, currentVersionId: versionId, versions: [] };
       asset.versions.push(version); asset.currentVersionId = versionId; asset.updatedAt = now;
