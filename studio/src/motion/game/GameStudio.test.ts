@@ -36,7 +36,7 @@ describe('gameCatalog multi-file detection and internal tags', () => {
     expect(isTopEarningGame({ tags: ['top赚钱'] })).toBe(true);
     expect(isTopEarningGame({ tags: [] })).toBe(false);
     expect(isTopEarningGame({})).toBe(false);
-    const tagged = bundledGames.filter(game => game.tags?.includes(TOP_EARNING_TAG)).map(game => game.id).sort();
+    const tagged = bundledGames.filter(isTopEarningGame).map(game => game.id).sort();
     expect(tagged).toEqual([
       '3d-mahjong',
       'backpack-hero',
@@ -51,11 +51,14 @@ describe('gameCatalog multi-file detection and internal tags', () => {
       'escape-match',
       'gold-miner',
       'hanzi-meme',
+      'kazehane',
       'mahjong-pairs',
       'ocean-fish-match',
       'plants-vs-zombies',
       'screw-puzzle',
+      'shanghai-vice',
       'tile-stack',
+      'vice-beach-golf-club',
       'vice-beach-motor-club',
       'village-defense',
     ]);
