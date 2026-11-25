@@ -36,7 +36,7 @@ OpenGame は**世界初のオープンソース・フルスタック Super Game 
 - 🚀 **Agent で AAA 級の 3D ゲームを構築。** **DeepSeek（DSH）**・**Claude**・**Codex**・**Gemini** からコード・3D シーン・アート・BGM・ボイスを丸ごと駆動し、一言のプロンプトから遊べる 3D アクション・レース・オープンワールドを制作。
 - 🎮 **あらゆるゲームをワンクリックでリミックス＆スタイル変換。** **25 本のプレイ可能な内蔵テンプレート**（3D・ボクセル・ドット絵・アニメ・9:16 ヒットミニゲーム／プレイアブル広告）を完全オープンソースで搭載し、検証済みゲームループのまま数分で画風や世界観を刷新。
 - 💰 **稼げるゲームを届ける：制作 → 検証 → 配信・収益化。** ロジック検証・バランスシミュレーション・実機プレイテスト・カバー撮影・トレーラー録画まで自動化し、Web 共有リンクや単一ファイル **9:16 プレイアブル広告**、**WeChat ミニゲーム / TikTok / Douyin** 向けの配信・収益化パスへ接続。
-- 🔓 **フルスタック・オープンソース（BYOA + BYOK）。** コード・アート・映像・BGM・ボイス・効果音・Three.js 3D まですべてオープンソース。普段お使いの [ローカル Agent](#agent-wall) と API キー、または [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=opengame&utm_content=readme_ja) にすぐ接続できます。
+- 🔓 **フルスタック・オープンソース（BYOA + BYOK）。** コード・アート・映像・BGM・ボイス・効果音・Three.js 3D まですべてオープンソース。普段お使いの [ローカル Agent](#agent-wall) と API キー、または [OpenDesign Go](https://go.open-design.ai/?utm_source=github&utm_medium=referral&utm_campaign=opengame&utm_content=readme_ja)（ブラックフライデー期間中は最安割引・**DeepSeek V4.1 Flash** や **Seedream** などのモデルが無料）にすぐ接続できます。
 
 <a id="quick-start"></a> <a id="クイックスタート"></a>
 
