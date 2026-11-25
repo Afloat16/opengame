@@ -1,0 +1,30 @@
+{
+  "id": "daily-meme-quiz",
+  "title": "Daily Meme Quiz",
+  "description": "Test your pop-culture wits and rapid-fire trivia knowledge across hilarious themed quiz rounds packed with internet memes and surprising brain-teasers.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Read each witty question and tap the correct answer choice before the round timer expires.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "天天么么答",
+      "description": "爆笑热梗知识闯关天天么么答：网罗网络热梗与趣味百科脑洞题库，限时抢答连对飙分，越答越上头！",
+      "controls": "阅读趣味热梗题目并快速点击正确答案选项，连续答对冲击高分闯关。"
+    }
+  }
+}

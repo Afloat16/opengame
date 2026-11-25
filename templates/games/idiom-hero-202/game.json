@@ -1,0 +1,30 @@
+{
+  "id": "idiom-hero-202",
+  "title": "Idiom Hero 202",
+  "description": "Master 202 handcrafted Chinese idiom crosswords with a breezy martial-arts theme—fill every intersecting phrase to level up your Jianghu title.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "medieval",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap a blank square and choose the matching Chinese character to complete all intersecting idioms.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "成语大侠 202 关",
+      "description": "武侠风长青益智成语大侠 202 关：202 关海量交叉成语填字挑战，闯关涨功力解锁江湖大侠称号！",
+      "controls": "选择空白方格并点击下方正确汉字补全全部交叉成语，一路闯关进阶成语大侠。"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "fix-the-typo",
+  "title": "Fix the Typo",
+  "description": "Play sharp-eyed proofreader across witty essays, signs, and notes—spot sneaky homophone typos and swap in the right Chinese characters.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Scan the text passage and tap every misspelled character to mark and fix all typos in the level.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "纠正错别字",
+      "description": "寓教于乐爆款文字游戏纠正错别字：化身毒舌语文老师批改奇葩作文与招牌，一眼揪出隐藏错别字超有成就感！",
+      "controls": "仔细阅读屏幕中的趣味文案，点击找出并纠正全部隐藏的错别字即可满分过关。"
+    }
+  }
+}

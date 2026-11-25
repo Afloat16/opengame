@@ -1,0 +1,30 @@
+{
+  "id": "merge-to-ten",
+  "title": "Merge to Ten",
+  "description": "Tap connected groups of identical digits to fuse them into the next number up—keep your grid open and race to craft the elusive 10 tile!",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap clusters of two or more matching adjacent numbers to merge them into a higher digit.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "数字合成十",
+      "description": "极简烧脑数字益智数字合成十：点击相连相同数字原地合体 +1，步步规划空间挑战合出终极数字 10！",
+      "controls": "点击两个及以上相邻相同数字即可就地合成更大数字，一路冲刺合成 10 甚至更高。"
+    }
+  }
+}

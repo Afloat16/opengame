@@ -1,0 +1,30 @@
+{
+  "id": "meme-spotter-king",
+  "title": "Meme Spotter King",
+  "description": "Conquer 30 laugh-out-loud viral meme stages—drag props, reveal hidden secrets, and uncover absurd plot twists in classic Douyin puzzle fashion.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap suspicious spots or drag scene props onto characters to uncover all hidden meme clues.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "玩梗找茬王 30 关",
+      "description": "抖音热榜爆款玩梗找茬王 30 关：30 关名场面热梗拉满，点击拖拽道具触发隐藏剧情，笑到停不下来！",
+      "controls": "点击画面可疑处或拖动道具触发神奇互动，找齐本关全部热梗线索通关。"
+    }
+  }
+}

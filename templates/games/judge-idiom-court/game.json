@@ -1,0 +1,30 @@
+{
+  "id": "judge-idiom-court",
+  "title": "Judge Idiom Court",
+  "description": "Preside over an ancient magistrate courtroom—link intersecting Chinese idioms to uncover evidence, interrogate culprits, and earn promotions.",
+  "genre": "story",
+  "style": "anime",
+  "setting": "medieval",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap character tiles at the bottom to fill blanks on the idiom grid and advance through courtroom cases.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "请老爷断案",
+      "description": "国风成语升官爆款请老爷断案：填字连成语步步查明奇案真相，升官发财买豪宅，玩着就把成语库刷满！",
+      "controls": "点击下方候选汉字填入空白格子组成正确成语，连词通关断案升官。"
+    }
+  }
+}

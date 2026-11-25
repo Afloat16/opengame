@@ -1,0 +1,30 @@
+{
+  "id": "eagle-eye-spotter",
+  "title": "Eagle Eye Spotter",
+  "description": "Zoom your detective eyes across busy comic scenes to catch sneaky time-travel bloopers, hidden Easter eggs, and absurd details before time runs out.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Scan the illustrated scene carefully and tap every suspicious or out-of-place detail to complete the checklist.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "我眼力超强",
+      "description": "抖音爆款眼力找茬神作我眼力超强：在满屏细节的魔性插画里揪出穿越穿帮与离谱隐藏彩蛋，专治大意眼花！",
+      "controls": "仔细观察趣味场景画面，点击揪出所有不合理或隐藏的穿帮细节即可过关。"
+    }
+  }
+}

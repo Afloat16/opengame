@@ -1,0 +1,30 @@
+{
+  "id": "hanzi-brain-spot",
+  "title": "Hanzi Brain Spot",
+  "description": "Dissect Chinese characters, spot hilarious visual puns, and solve clever wordplay stages inspired by viral Hanzi brain-teaser hits.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap strokes, radicals, or hidden scene clues to solve each clever Chinese character riddle.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "汉字脑洞找茬",
+      "description": "抖音全民爆火汉字脑洞找茬：拆字寻宝、看图找梗、文字谐音脑洞大开，每一关都让人拍案叫绝！",
+      "controls": "点击拆解汉字笔画偏旁或寻找画面隐藏文字线索，脑洞大开破解每一关谜题。"
+    }
+  }
+}

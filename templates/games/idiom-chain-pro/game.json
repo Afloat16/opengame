@@ -1,0 +1,30 @@
+{
+  "id": "idiom-chain-pro",
+  "title": "Idiom Chain Pro",
+  "description": "Link timeless four-character Chinese idioms head-to-tail across crisp ink-paper stages—relaxing wordplay that boosts vocabulary effortlessly.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "medieval",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap candidate characters to complete intersecting four-character idiom chains.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "经典成语接龙",
+      "description": "国风益智经典成语接龙：首尾相连填词闯关，海量成语题库层层解锁，休闲涨知识两不误！",
+      "controls": "点击下方汉字填入空白格完成四字成语接龙，全部连成即可过关。"
+    }
+  }
+}

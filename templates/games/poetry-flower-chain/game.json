@@ -1,0 +1,30 @@
+{
+  "id": "poetry-flower-chain",
+  "title": "Poetry Flower Chain",
+  "description": "Celebrate classic Tang and Song poetry in an ink-wash puzzle arena—piece together famous verses around seasonal keywords like flower, moon, and spring.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "medieval",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap scattered Chinese characters in order to assemble classic poetry lines matching the stage keyword.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "诗词飞花令",
+      "description": "国风水墨雅趣诗词飞花令：围绕花、月、春、风等诗眼连字成句，重温唐诗宋词名篇感受绝美东方意境！",
+      "controls": "按顺序点击散落的汉字拼接出完整古诗词名句，感受唯美国风飞花令雅趣。"
+    }
+  }
+}
