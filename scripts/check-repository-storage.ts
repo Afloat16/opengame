@@ -7,7 +7,7 @@ import { skillPreviewMedia, validateMediaManifest } from '../shared/repository-m
 const maxGitFileBytes = 1024 * 1024;
 const checkoutWarningBytes = 128 * 1024 * 1024;
 function git(cwd: string, args: string[], input?: string) {
-  const result = spawnSync('git', args, { cwd, input, maxBuffer: 32 * 1024 * 1024 });
+  const result = spawnSync('git', args, { cwd, input, maxBuffer: 256 * 1024 * 1024 });
   assert.equal(result.status, 0, result.stderr?.toString() || result.error?.message);
   return result.stdout;
 }

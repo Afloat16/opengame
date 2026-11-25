@@ -78,9 +78,11 @@ async function downloadAttempt(asset, filename, progress, attempt, maxAttempts) 
 
 export async function runFile(command, args, options = {}) {
   return new Promise((resolve, reject) => {
-    const { timeout = 300_000, killSignal = 'SIGTERM', ...spawnOptions } = options;
+    const { timeout = 300_000, killSignal = 'SIGTERM', maxStdout = 4 * 1024 * 1024, ...spawnOptions } = options;
     const child = spawn(command, args, { stdio: ['ignore', 'pipe', 'pipe'], windowsHide: true, killSignal, ...spawnOptions });
     let stdout = '', stderr = '', settled = false;
+    const stdoutChunks = [];
+    let stdoutBytes = 0;
     const finish = (error, output) => {
       if (settled) return;
       settled = true;
@@ -93,13 +95,28 @@ export async function runFile(command, args, options = {}) {
       finish(Object.assign(new Error(`${command} timed out after ${timeout}ms`), { code: 'ETIMEDOUT' }));
     }, timeout) : undefined;
     timer?.unref();
-    child.stdout?.on('data', chunk => { stdout = (stdout + chunk).slice(-4 * 1024 * 1024); });
+    child.stdout?.on('data', chunk => {
+      const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+      if (stdoutBytes + buf.length <= maxStdout) {
+        stdoutChunks.push(buf);
+        stdoutBytes += buf.length;
+      } else {
+        const merged = Buffer.concat([...stdoutChunks, buf]);
+        const sliced = merged.subarray(Math.max(0, merged.length - maxStdout));
+        stdoutChunks.length = 0;
+        stdoutChunks.push(sliced);
+        stdoutBytes = sliced.length;
+      }
+    });
     child.stderr?.on('data', chunk => { stderr = (stderr + chunk).slice(-16000); });
     child.once('error', error => {
       if (error.code === 'ENOENT') error.message = `HOST_CLI_NOT_FOUND: ${command}. Install this CLI or pass its executable/JavaScript entry path. ${error.message}`;
       finish(error);
     });
-    child.once('close', code => code === 0 ? finish(null, stdout) : finish(new Error(`${command} exited ${code}: ${stderr || stdout}`)));
+    child.once('close', code => {
+      stdout = Buffer.concat(stdoutChunks).toString('utf8');
+      return code === 0 ? finish(null, stdout) : finish(new Error(`${command} exited ${code}: ${stderr || stdout}`));
+    });
   });
 }
 

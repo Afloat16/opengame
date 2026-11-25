@@ -123,7 +123,7 @@ async function scanTree(directory, kind, binary) {
 }
 
 export async function scanSource(source, binary) {
-  const names = (await runFile('git', ['ls-files', '-z'], { cwd: source })).split('\0').filter(Boolean);
+  const names = (await runFile('git', ['ls-files', '-z'], { cwd: source, maxStdout: 64 * 1024 * 1024 })).split('\0').filter(Boolean);
   const work = await mkdtemp(path.join(os.tmpdir(), 'motion-source-scan-'));
   try {
     // Scan every game as its own release unit, preserving the same limits and privacy rules.
