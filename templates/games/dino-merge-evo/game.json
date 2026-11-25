@@ -1,0 +1,30 @@
+{
+  "id": "dino-merge-evo",
+  "title": "Dino Merge Evolution",
+  "description": "Fuse matching dinosaurs on your tactical battlefield to evolve fierce T-Rexes and armored beasts, then unleash your prehistoric squad in explosive auto-battles.",
+  "genre": "casual",
+  "style": "3d",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag identical dinosaurs together on the grid to merge stronger tiers, then tap Fight to start the battle.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "合成进化恐龙",
+      "description": "超爽 3D 恐龙合成进化对战：拖拽两只相同恐龙合体进化成霸王龙与远古巨兽，排兵布阵碾压对面军团！",
+      "controls": "在战场上拖动两只相同恐龙合成更高级恐龙，布阵完成后点击开战碾压敌军。"
+    }
+  }
+}

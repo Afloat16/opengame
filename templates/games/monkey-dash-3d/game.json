@@ -1,0 +1,30 @@
+{
+  "id": "monkey-dash-3d",
+  "title": "Monkey Dash 3D",
+  "description": "Sprint through lush jungle bridges and temple ruins as a nimble monkey—vault over rolling logs, scoop up golden bananas, and dash through speed rings.",
+  "genre": "platformer",
+  "style": "3d",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Swipe to change lanes, leap across gaps, and collect golden bananas along the jungle track.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "猴子快跑 3D",
+      "description": "动感丛林 3D 猴子快跑：化身机灵小猴在热带雨林与神庙赛道极速狂奔，腾空跃过滚木狂收香蕉冲刺高分！",
+      "controls": "滑动屏幕左右变道并起跳越过障碍，收集沿途金香蕉挑战极限跑酷纪录。"
+    }
+  }
+}

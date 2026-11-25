@@ -1,0 +1,30 @@
+{
+  "id": "duke-duck-quest",
+  "title": "Duke Duck Adventure",
+  "description": "Waddle, jump, and dash across charming retro side-scrolling stages as Duke the fearless duck—stomp quirky foes, dodge spikes, and claim sparkling treasure.",
+  "genre": "platformer",
+  "style": "pixel",
+  "setting": "retro",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Use left/right movement and jump buttons (or arrow keys / spacebar) to navigate platforms and defeat enemies.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "landscape",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "鸭子杜克大冒险",
+      "description": "复古横版动作闯关鸭子杜克大冒险：操控勇敢的杜克小鸭跳跃踩怪、跨越险峻平台与尖刺机关，通关寻宝乐趣无穷！",
+      "controls": "使用屏幕方向键与跳跃键（或键盘方向键/空格）控制鸭子杜克跑跳踩怪通关。"
+    }
+  }
+}

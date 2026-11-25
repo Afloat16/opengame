@@ -1,0 +1,30 @@
+{
+  "id": "chubby-hero-run",
+  "title": "Chubby Hero Quest",
+  "description": "Join plucky Chubby Hero on a lively 3D adventure packed with bouncy platforms, coin trails, and cheeky monsters guarding every milestone.",
+  "genre": "platformer",
+  "style": "3d",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag or swipe to steer, jump across moving platforms, collect coins, and clear each adventure stage.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "胖奥的冒险",
+      "description": "魔性欢乐 3D 动作闯关胖奥的冒险：陪呆萌胖奥翻山越岭躲陷阱、拾金币打小怪，开启轻松解压的奇幻冒险之旅！",
+      "controls": "拖动或滑动控制胖奥移动与跳跃，躲开沿途机关小怪收集金币一路闯关。"
+    }
+  }
+}

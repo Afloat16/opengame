@@ -1,0 +1,30 @@
+{
+  "id": "bug-sprint-2d",
+  "title": "Bug Sprint 2D",
+  "description": "Race across colorful garden leaves and forest branches as a speedy little beetle—leap pitfalls, dodge hungry predators, and blast through side-scrolling courses.",
+  "genre": "platformer",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap jump and action controls to leap over gaps, bounce off springs, and sprint to the finish line.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "landscape",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "虫虫快跑",
+      "description": "精致横版卡通跑酷虫虫快跑：化身敏捷小甲虫在微观花园赛道极速冲刺，灵活二段跳越过沟壑与天敌冲向终点！",
+      "controls": "点击屏幕跳跃与冲刺按钮越过障碍沟壑，收集奖励冲刺终点。"
+    }
+  }
+}

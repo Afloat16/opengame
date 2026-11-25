@@ -1,0 +1,30 @@
+{
+  "id": "save-the-pets",
+  "title": "Save the Pets",
+  "description": "Pull pins, clear blockers, and solve clever stage contraptions to rescue puppies, kittens, and cute critters before danger strikes.",
+  "genre": "casual",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap or slide pins and obstacles in the right sequence to guide pets safely to the exit.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "救救萌宠",
+      "description": "治愈系 3D 解谜救救萌宠：仔细观察机关顺序，拉动障碍化解岩浆与陷阱，把可爱的小猫小狗全部平安救出！",
+      "controls": "按正确顺序点击或滑动机关挡板，化解危险把小动物们安全送到终点。"
+    }
+  }
+}

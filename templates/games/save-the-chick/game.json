@@ -1,0 +1,30 @@
+{
+  "id": "save-the-chick",
+  "title": "Save the Chick",
+  "description": "Outsmart sneaky foxes and tricky traps to rescue adorable baby chicks—solve clever physics puzzles and guide every fluffy chick safely back to the coop.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap or drag interactive blocks, ropes, and barriers to clear a safe path and protect the chicks.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "救救小鸡",
+      "description": "超萌益智闯关救救小鸡：动脑破解机关陷阱、智斗偷鸡坏狐狸，把每一只呆萌小黄鸡平安护送回鸡窝！",
+      "controls": "点击或拖动关卡机关障碍，巧用物理路径化解危险，成功救出全部小鸡。"
+    }
+  }
+}

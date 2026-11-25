@@ -1,0 +1,30 @@
+{
+  "id": "breakout-siege-3d",
+  "title": "Breakout Siege 3D",
+  "description": "Hold the line against relentless waves of armored foes—upgrade tactical weapons, dodge incoming fire, and blast a path out of the encirclement.",
+  "genre": "shooter",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag to move and aim your trooper while automatically firing at nearby enemies and collecting power-ups.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "激战突围",
+      "description": "硬核爽快 3D 射击激战突围：端起火力全开的武器冲破重重敌军包围，灵活走位点杀精英怪杀出一条血路！",
+      "controls": "拖动虚拟摇杆控制走位走射，收集战场增益道具击溃四面八方围攻的敌人。"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "lazy-cat-runner",
+  "title": "Lazy Cat Runner",
+  "description": "Guide a chubby orange tabby sprinting across sunny rooftops and city lanes—leap over hurdles, snack on fish treats, and chase nonstop high scores.",
+  "genre": "platformer",
+  "style": "3d",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Swipe left, right, up, or down to switch lanes, jump over barriers, and slide under obstacles.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "懒猫跑酷",
+      "description": "萌系 3D 治愈系懒猫跑酷：操控胖橘猫在阳光街区和屋顶飞奔跳跃、一路狂吃小鱼干躲避障碍刷新最高分！",
+      "controls": "左右滑动切换跑道，上下滑动跳跃翻滚躲避障碍，收集沿途小鱼干与金币。"
+    }
+  }
+}
