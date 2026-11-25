@@ -1,0 +1,30 @@
+{
+  "id": "sheep-farm-tycoon",
+  "title": "Sheep Farm Tycoon",
+  "description": "Raise fluffy sheep across sunlit green pastures—shear wool, craft cozy textiles, expand barns, and build a thriving countryside ranch.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap pastures and workshops to breed sheep, shear wool, upgrade production lines, and sell goods for coins.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "小羊农场经营",
+      "description": "治愈系放置牧场小羊农场经营：在青青草原养满圆滚滚的小绵羊，剪羊毛加工纺织品卖大钱，扩建你的梦幻田园牧场！",
+      "controls": "点击升级牧场与加工坊、饲养更多小羊剪毛售卖，不断扩建繁华的田园农场。"
+    }
+  }
+}

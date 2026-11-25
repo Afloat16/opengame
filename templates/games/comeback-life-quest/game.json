@@ -1,0 +1,30 @@
+{
+  "id": "comeback-life-quest",
+  "title": "Comeback Life Quest",
+  "description": "Battle poverty and bad luck through witty mini-challenges, side hustles, and smart investments until you flip your destiny into ultimate success.",
+  "genre": "story",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap work tasks, upgrade skills, and make bold life decisions to grow your wealth and status.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "逆袭大冒险",
+      "description": "超上头逆袭养成模拟逆袭大冒险：从小摊打工逆天改命，解锁奇趣副业、买车买房打脸势利眼，爽感直接拉满！",
+      "controls": "点击完成打工与投资任务、升级能力抓住暴富商机，开启一路开挂的逆袭人生。"
+    }
+  }
+}

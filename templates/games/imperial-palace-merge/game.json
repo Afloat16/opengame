@@ -1,0 +1,30 @@
+{
+  "id": "imperial-palace-merge",
+  "title": "Imperial Palace Merge",
+  "description": "Merge charming court characters from humble palace maid all the way to Empress—collect royal tribute coins and unlock gorgeous ancient costumes.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "medieval",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap to summon attendants and drag two matching ranks together to merge and advance up the imperial hierarchy.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "宫廷合成晋升记",
+      "description": "国风古韵爆款宫廷合成：拖拽相同古风角色一路合体晋升，从秀女宫女一步步封后掌权，解锁绝美华服图鉴！",
+      "controls": "点击召唤角色并将两个同品级人物拖到一起合成晋升，解锁更高位份与宫廷华服。"
+    }
+  }
+}

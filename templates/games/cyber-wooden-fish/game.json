@@ -1,0 +1,30 @@
+{
+  "id": "cyber-wooden-fish",
+  "title": "Cyber Wooden Fish",
+  "description": "Tap the resonant digital wooden fish for instant zen merit +1 pops, switch soothing mallet tones and skins, or enable auto-chanting mode to unwind.",
+  "genre": "casual",
+  "style": "minimal",
+  "setting": "retro",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap the wooden fish to rack up merit points, customize themes and text popups, or toggle auto-tap.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "电子木鱼模拟",
+      "description": "全网刷屏解压神器电子木鱼：轻轻一敲功德 +1 清脆音效瞬间抚平焦虑，支持切换多种木鱼皮肤与自动敲击模式！",
+      "controls": "点击屏幕敲击电子木鱼积攒功德，可自由切换皮肤音效与自动敲击模式。"
+    }
+  }
+}

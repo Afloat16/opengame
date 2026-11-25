@@ -1,0 +1,30 @@
+{
+  "id": "master-chef-bistro",
+  "title": "Master Chef Bistro",
+  "description": "Step behind the counter of a bustling neighborhood eatery—prep fresh dishes, keep every customer smiling, and grow into a Michelin-level chef.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap ingredients and cooking stations to prepare and deliver each customer's requested dish.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "金牌大厨餐厅",
+      "description": "轻松爽快模拟料理金牌大厨餐厅：按单备料烹制诱人佳肴，升级菜单接待络绎不绝的吃货顾客成为五星名厨！",
+      "controls": "点击食材与灶台制作顾客点单的美味料理，准时上菜赚取丰厚金币升级餐厅。"
+    }
+  }
+}

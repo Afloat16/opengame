@@ -1,0 +1,30 @@
+{
+  "id": "sweet-princess-dress",
+  "title": "Sweet Princess Dress-Up",
+  "description": "Style adorable anime princesses with hundreds of hairstyles, sparkling gowns, ribbons, and pastel accessories to win dazzling fashion showdowns.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap wardrobe tabs to mix and match hairstyles, dresses, shoes, and accessories for your princess.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "甜心公主换装记",
+      "description": "高颜值少女心爆棚甜心公主换装记：海量华丽礼服、梦幻发型与闪耀配饰自由搭配，打造专属二次元人气小公主！",
+      "controls": "点击右侧衣橱分类自由挑选发型、裙装与精致饰品，搭配出最闪耀的公主造型。"
+    }
+  }
+}

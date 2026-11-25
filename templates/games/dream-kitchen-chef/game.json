@@ -1,0 +1,30 @@
+{
+  "id": "dream-kitchen-chef",
+  "title": "Dream Kitchen Chef",
+  "description": "Fire up the grill in a lively gourmet restaurant—plate sizzling dishes, chain fast combo tips, upgrade kitchen appliances, and unlock global culinary themes.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap raw ingredients to cook, plate finished meals, and serve hungry guests before their patience bars run low.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "landscape",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "梦幻厨房",
+      "description": "经典时间管理爆款梦幻厨房：煎烤烹炸手速飞起，精准上菜赚取连击小费，升级厨具解锁世界各地人气美食餐厅！",
+      "controls": "点击食材下锅烹饪并装盘递给对应顾客，升级厨具加快出餐赚取连击金币。"
+    }
+  }
+}

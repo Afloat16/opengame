@@ -1,0 +1,30 @@
+{
+  "id": "garden-makeover-match",
+  "title": "Garden Makeover Match",
+  "description": "Clear layered garden tile stacks in classic triple-match style to earn renovation stars and turn an overgrown estate into a blooming paradise.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap uncovered tiles to place them into the tray; match three identical icons to clear them and earn garden stars.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "花园装修家",
+      "description": "爆款三消叠加装修玩法花园装修家：在层叠牌堆中收集三个相同图案消除攒星，亲手打造鸟语花香的私家大花园！",
+      "controls": "点击未被遮挡的卡牌放入下方槽位，凑齐三张相同图案消除赢星星装扮花园。"
+    }
+  }
+}

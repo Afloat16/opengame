@@ -1,0 +1,30 @@
+{
+  "id": "merge-dream-home",
+  "title": "Merge Dream Home",
+  "description": "Drag and merge matching tools, flowers, and decor items on a cozy board to fulfill renovation orders and transform a fixer-upper villa into a dream home.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag identical items together on the merge board to craft higher-tier pieces and complete home makeover tasks.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "装扮梦想家园二合",
+      "description": "女性向顶流二合消除装扮梦想家园：拖拽合并相同工具与花艺完成订单，亲手把老房子翻新装扮成绝美梦幻豪宅！",
+      "controls": "拖动两个相同物品合体升级完成装修订单，逐步解锁精致家具装扮梦想家园。"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "marry-billionaire-sim",
+  "title": "Marry a Billionaire",
+  "description": "Guide our heroine through dramatic social makeovers, witty dialogue dilemmas, and hilarious plot twists on her whirlwind quest into high society.",
+  "genre": "story",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap props, outfits, and dialogue choices inside each comic scene to pass every high-society challenge.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "帮她嫁入豪门",
+      "description": "抖音爆火剧情解谜帮她嫁入豪门：挑选精致穿搭、机智化解豪门考验与奇葩剧情，助女主一路开挂逆袭人生赢家！",
+      "controls": "点击挑选场景道具、穿搭方案或剧情选项，机智过关帮女主成功逆袭。"
+    }
+  }
+}
