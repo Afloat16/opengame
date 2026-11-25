@@ -3403,9 +3403,15 @@ it('renders persistent live progress dock, ticking step timers, and Continue rec
   expect(progressBar.getAttribute('data-determinate')).toBe('true');
   expect(progressBar.style.width).toBe('33%');
   expect(document.querySelector('.om-sa-work-summary-timer')).toBeTruthy();
+  expect(document.querySelector('.om-sa-work-summary-label')?.textContent).toMatch(/Working for \d+/);
+  // Running creative turns default collapsed; expanding reveals the live reasoning row.
+  expect(document.querySelectorAll('.om-sa-reasoning-row')).toHaveLength(0);
+  const liveToggle = document.querySelector<HTMLButtonElement>('.om-sa-work-summary-btn')!;
+  expect(liveToggle.getAttribute('aria-expanded')).toBe('false');
+  await act(async () => liveToggle.click());
+  await flush();
   expect(document.querySelectorAll('.om-sa-reasoning-row')).toHaveLength(1);
   expect(document.querySelector('.om-sa-reasoning-label')?.textContent).toMatch(/Thinking… · \d+(?:\.\d+)?s/);
-  expect(document.querySelector('.om-sa-work-summary-label')?.textContent).toMatch(/Working for \d+/);
 
   // 2. Cancelled mid-run turn renders recovery card with step summary and Continue button
   const cancelledChat: SuperAgentChat = {
@@ -8304,7 +8310,8 @@ it('folds intermediate progress notes into WorkLogSection, renders 16:9 game cov
 
     const deliverable = container.querySelector('.om-sa-deliverable-card')!;
     expect(deliverable.getAttribute('data-wide-cover')).toBe('true');
-    expect(deliverable.textContent).toContain('HTML 游戏 · 平台跳跃');
+    expect(deliverable.textContent).toContain('平台跳跃');
+    expect(deliverable.textContent).not.toContain('HTML 游戏');
     expect(deliverable.textContent).not.toContain('Game Studio');
     expect(deliverable.textContent).toContain('开始试玩');
 

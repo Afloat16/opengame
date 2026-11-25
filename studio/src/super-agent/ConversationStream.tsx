@@ -267,6 +267,7 @@ export function ConversationStream({
   sending,
   sidebarOpen,
   viewerOpen,
+  activeViewerArtifactId = null,
   counts,
   attachments,
   draftSeed = null,
@@ -331,6 +332,7 @@ export function ConversationStream({
   sending: boolean;
   sidebarOpen: boolean;
   viewerOpen: boolean;
+  activeViewerArtifactId?: string | null;
   counts: SuperAgentResourceCounts | null;
   attachments: SuperAgentResourceAttachment[];
   draftSeed?: {
@@ -1762,6 +1764,7 @@ export function ConversationStream({
               return {
                 id: pendingSubmission!.id,
                 title: pendingSubmission!.text.slice(0, 60) || t('New conversation'),
+                ...(headerPresentation.intent ? { intent: headerPresentation.intent } : {}),
                 engine: selection.engine,
                 model: selection.model,
                 permissionMode,
@@ -1918,6 +1921,7 @@ export function ConversationStream({
             hideApprovals
             continueDisabled={sending || scaffoldingGame || busy || hasPendingApproval || runnableEngines.length === 0}
             engineLabel={effectiveAgents.find(a => a.id === displayChat.engine)?.label ?? displayChat.engine}
+            activeViewerArtifactId={activeViewerArtifactId}
             onOpenArtifactId={onOpenArtifactId}
             onOpenChangedFile={onOpenChangedFile}
             onPreviewAttachment={onPreviewAttachment}

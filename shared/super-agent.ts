@@ -195,6 +195,7 @@ export type SuperAgentArtifact = {
   jobId?: string;
   exportRequestedAt?: number;
   url?: string;
+  previewUrl?: string;
   downloadUrl?: string;
   mimeType?: string;
   filePath?: string;
@@ -734,6 +735,7 @@ export function formatSuperAgentToolLabel(tool: string, args?: Record<string, un
       if (action === 'generate') return 'Generated media';
       if (action === 'models') return 'Listed media models';
       if (action === 'inspect') return 'Checked media providers';
+      if (action === 'reference') return 'Read media provider guide';
       return 'Checked media gateway';
     case 'openmotion_project_archive':
       return 'Managed project archive';
@@ -1078,10 +1080,13 @@ export function classifySuperAgentTool(
         };
       }
     }
+    const defaultSummary = normalized === 'openmotion_media_use' && action === 'reference'
+      ? firstString(args.provider, args.model, args.title, args.url)
+      : firstString(args.capabilityId, args.model, args.title, args.url);
     return {
       category: 'mcp',
       label: humanLabel,
-      summary: firstString(args.capabilityId, args.model, args.title, args.projectId, args.url, action),
+      ...(defaultSummary ? { summary: defaultSummary } : {}),
     };
   }
 

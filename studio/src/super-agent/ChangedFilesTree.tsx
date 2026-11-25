@@ -374,12 +374,14 @@ export function FilesChangedCard({
   files,
   projectDir,
   defaultExpanded = true,
+  subtle = false,
   onCopyText,
   onOpenFile,
 }: {
   files: SuperAgentFileOperation[];
   projectDir?: string;
   defaultExpanded?: boolean;
+  subtle?: boolean;
   onCopyText: (text: string) => void;
   onOpenFile?: (file: SuperAgentFileOperation) => void;
 }) {
@@ -418,7 +420,11 @@ export function FilesChangedCard({
   };
 
   return (
-    <div className="om-sa-files-changed">
+    <div
+      className="om-sa-files-changed"
+      data-subtle={subtle || undefined}
+      data-expanded={expanded || undefined}
+    >
       <div className="om-sa-files-changed-head">
         <Button
           variant="plain"
@@ -458,19 +464,21 @@ export function FilesChangedCard({
       </div>
 
       {expanded && (
-        <div className="om-sa-files-changed-list">
-          <ChangedTreeNodeList
-            nodes={tree}
-            depth={0}
-            collapsedDirs={collapsedDirs}
-            openDiffs={openDiffs}
-            onToggleDir={dirPath =>
-              setCollapsedDirs(prev => ({ ...prev, [dirPath]: !prev[dirPath] }))
-            }
-            onToggleFile={handleToggleFile}
-            onCopyText={onCopyText}
-            onOpenFile={onOpenFile}
-          />
+        <>
+          <div className="om-sa-files-changed-list">
+            <ChangedTreeNodeList
+              nodes={tree}
+              depth={0}
+              collapsedDirs={collapsedDirs}
+              openDiffs={openDiffs}
+              onToggleDir={dirPath =>
+                setCollapsedDirs(prev => ({ ...prev, [dirPath]: !prev[dirPath] }))
+              }
+              onToggleFile={handleToggleFile}
+              onCopyText={onCopyText}
+              onOpenFile={onOpenFile}
+            />
+          </div>
           {projectDir && !isInternalManagedStorageDir(projectDir) && (
             <div className="om-sa-files-changed-foot">
               <Tooltip label={t('Copy project directory')}>
@@ -487,7 +495,7 @@ export function FilesChangedCard({
               </Tooltip>
             </div>
           )}
-        </div>
+        </>
       )}
     </div>
   );

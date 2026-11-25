@@ -2118,6 +2118,7 @@ export function SuperAgentWorkspace({
             sending={sending}
             sidebarOpen={!sidebarAsDrawer && sidebarOpen}
             viewerOpen={viewerOpen}
+            activeViewerArtifactId={viewerOpen ? (activeViewerArtifact?.id ?? null) : null}
             counts={resourcesCatalog?.counts ?? null}
             attachments={attachments}
             draftSeed={draftSeed}

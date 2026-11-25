@@ -4,7 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import type { SuperAgentArtifact } from '../../../shared/super-agent';
 import { I18nProvider } from '../i18n/I18n';
-import { ArtifactDeliverableCard } from './ArtifactDeliverableCard';
+import { ArtifactDeliverableCard, SupportingAssetRow } from './ArtifactDeliverableCard';
 
 (globalThis as unknown as { IS_REACT_ACT_ENVIRONMENT: boolean }).IS_REACT_ACT_ENVIRONMENT = true;
 
@@ -37,6 +37,8 @@ function renderCard(artifact: SuperAgentArtifact, handlers: Partial<Parameters<t
       <I18nProvider>
         <ArtifactDeliverableCard
           artifact={artifact}
+          layout={handlers.layout}
+          isActiveInViewer={handlers.isActiveInViewer}
           onOpenArtifactId={onOpenArtifactId}
           onCopyText={onCopyText}
           onNotify={onNotify}
@@ -204,5 +206,184 @@ describe('ArtifactDeliverableCard', () => {
       act(() => root.unmount());
       container.remove();
     }
+  });
+
+  it('strips internal routing prefixes from model subtitles, frames portrait covers, and reflects active Viewer state', async () => {
+    let allowManualError = false;
+    const imgErrorSpy = vi.spyOn(HTMLImageElement.prototype, 'dispatchEvent').mockImplementation(function (this: HTMLImageElement, ev: Event) {
+      if (ev.type === 'error' && !allowManualError) return false;
+      return EventTarget.prototype.dispatchEvent.call(this, ev);
+    });
+    const portraitGame: SuperAgentArtifact = {
+      id: 'game:fruit-stack',
+      kind: 'game-project',
+      title: '叠叠果摊',
+      subtitle: 'casual · Playable ad',
+      playableAd: true,
+      scenario: 'portrait',
+      projectId: 'fruit-stack',
+      url: '/motion-api/games/fruit-stack/play/index.html',
+      createdAt: 1,
+      updatedAt: 2,
+    };
+    const { container, root } = renderCard(portraitGame, { layout: 'hero', isActiveInViewer: true });
+
+    const card = container.querySelector('.om-sa-deliverable-card')!;
+    expect(card.getAttribute('data-layout')).toBe('hero');
+    expect(card.getAttribute('data-has-stage')).toBe('true');
+    expect(card.getAttribute('data-portrait-cover')).toBe('true');
+    expect(card.getAttribute('data-viewer-active')).toBe('true');
+    expect(card.querySelector('.om-sa-deliverable-stage')?.getAttribute('data-stage-mode')).toBe('portrait-frame');
+    expect(card.querySelector('.om-sa-deliverable-stage-phone')).toBeTruthy();
+    expect(card.querySelector('.om-sa-deliverable-stage-play')).toBeNull();
+    expect(card.querySelector('.om-sa-deliverable-open-cue')).toBeNull();
+    expect(card.textContent).toContain('Portrait 9:16');
+    expect(card.querySelector('.om-sa-deliverable-btn[data-primary]')?.textContent).toContain('Playing in Viewer');
+
+    act(() => root.unmount());
+    container.remove();
+
+    // Built-in remix cover (cover.webp) renders full-bleed stage and omits "HTML Game" jargon when genre exists
+    const remixGame: SuperAgentArtifact = {
+      id: 'game:mahjong-3d',
+      kind: 'game-project',
+      title: '3D 物理麻将',
+      subtitle: 'casual · Game Studio',
+      playableAd: false,
+      scenario: 'portrait',
+      projectId: 'mahjong-3d',
+      previewUrl: '/motion-api/games/mahjong-3d/play/cover.webp',
+      url: '/motion-api/games/mahjong-3d/play/index.html',
+      createdAt: 1,
+      updatedAt: 2,
+    };
+    const remixRender = renderCard(remixGame, { layout: 'hero', isActiveInViewer: false });
+    const remixCard = remixRender.container.querySelector('.om-sa-deliverable-card')!;
+    expect(remixCard.getAttribute('data-has-stage')).toBe('true');
+    expect(remixCard.querySelector('.om-sa-deliverable-stage')?.getAttribute('data-stage-mode')).toBe('full-bleed');
+    expect(remixCard.querySelector<HTMLImageElement>('.om-sa-deliverable-stage-img')?.src).toContain('/play/cover.webp');
+    expect(remixCard.querySelector('.om-sa-deliverable-stage-play')).toBeTruthy();
+    expect(remixCard.textContent).toContain('Casual');
+    expect(remixCard.textContent).toContain('Portrait 9:16');
+    expect(remixCard.textContent).not.toContain('HTML Game');
+    act(() => remixRender.root.unmount());
+    remixRender.container.remove();
+
+    // Legacy remix artifact without previewUrl falls back from assets/cover.png to cover.webp on image error
+    const legacyRemix: SuperAgentArtifact = {
+      id: 'game:legacy-remix',
+      kind: 'game-project',
+      title: '3D 物理麻将',
+      subtitle: 'casual · Game Studio',
+      scenario: 'portrait',
+      projectId: 'legacy-remix',
+      url: '/motion-api/games/legacy-remix/play/index.html',
+      createdAt: 1,
+      updatedAt: 2,
+    };
+    const legacyRender = renderCard(legacyRemix, { layout: 'hero' });
+    const firstImg = legacyRender.container.querySelector<HTMLImageElement>('.om-sa-deliverable-stage-phone-img')!;
+    expect(firstImg.src).toContain('/play/assets/cover.png');
+    await act(async () => {
+      allowManualError = true;
+      firstImg.dispatchEvent(new Event('error'));
+      allowManualError = false;
+    });
+    const fallbackImg = legacyRender.container.querySelector<HTMLImageElement>('.om-sa-deliverable-stage-img');
+    expect(fallbackImg?.src).toContain('/play/cover.webp');
+    expect(legacyRender.container.querySelector('.om-sa-deliverable-stage')?.getAttribute('data-stage-mode')).toBe('full-bleed');
+    act(() => legacyRender.root.unmount());
+    legacyRender.container.remove();
+    imgErrorSpy.mockRestore();
+
+    const imageAsset: SuperAgentArtifact = {
+      id: 'asset:img-1',
+      kind: 'asset-image',
+      title: '果摊晨市背景',
+      subtitle: 'account:gpt-image-2',
+      assetId: 'img-1',
+      versionId: 'v-1',
+      url: '/motion-api/assets/img-1/versions/v-1/media',
+      createdAt: 1,
+      updatedAt: 2,
+    };
+    const imgRender = renderCard(imageAsset);
+    await flush();
+    expect(imgRender.container.textContent).toContain('GPT Image 2');
+    expect(imgRender.container.textContent).not.toContain('account:');
+    act(() => imgRender.root.unmount());
+    imgRender.container.remove();
+  });
+
+  it('plays supporting audio inline and previews supporting images in a lightbox without switching the Viewer', async () => {
+    const playSpy = vi.spyOn(HTMLMediaElement.prototype, 'play').mockImplementation(function (this: HTMLMediaElement) {
+      this.dispatchEvent(new Event('play'));
+      return Promise.resolve();
+    });
+    const pauseSpy = vi.spyOn(HTMLMediaElement.prototype, 'pause').mockImplementation(function (this: HTMLMediaElement) {
+      this.dispatchEvent(new Event('pause'));
+    });
+
+    const onOpenArtifactId = vi.fn();
+    const container = document.createElement('div');
+    document.body.appendChild(container);
+    const root = createRoot(container);
+
+    const audioArtifact: SuperAgentArtifact = {
+      id: 'asset:bgm-1',
+      kind: 'asset-audio',
+      title: '果摊晨曲',
+      subtitle: 'account:elevenlabs-music-v2',
+      assetId: 'bgm-1',
+      versionId: 'v-1',
+      url: '/motion-api/assets/bgm-1/versions/v-1/media',
+      createdAt: 1,
+      updatedAt: 2,
+    };
+    const imgArtifact: SuperAgentArtifact = {
+      id: 'asset:bg-1',
+      kind: 'asset-image',
+      title: '果摊晨市背景',
+      subtitle: 'account:gpt-image-2',
+      assetId: 'bg-1',
+      versionId: 'v-1',
+      url: '/motion-api/assets/bg-1/versions/v-1/media',
+      createdAt: 1,
+      updatedAt: 2,
+    };
+
+    await act(async () => {
+      root.render(
+        <I18nProvider initialLocale="en">
+          <div>
+            <SupportingAssetRow artifact={audioArtifact} onOpenArtifactId={onOpenArtifactId} onOpenInAssets={vi.fn()} />
+            <SupportingAssetRow artifact={imgArtifact} onOpenArtifactId={onOpenArtifactId} onOpenInAssets={vi.fn()} />
+          </div>
+        </I18nProvider>,
+      );
+    });
+    await flush();
+
+    expect(container.textContent).toContain('Eleven Music v2');
+    expect(container.textContent).toContain('GPT Image 2');
+    expect(container.textContent).not.toContain('account:');
+
+    // Audio plays inline without invoking onOpenArtifactId
+    const audioMain = container.querySelector<HTMLButtonElement>('.om-sa-supporting-row[data-kind="asset-audio"] .om-sa-supporting-main')!;
+    await act(async () => audioMain.click());
+    expect(playSpy).toHaveBeenCalledTimes(1);
+    expect(onOpenArtifactId).not.toHaveBeenCalled();
+
+    // Image opens lightbox without invoking onOpenArtifactId
+    const imgMain = container.querySelector<HTMLButtonElement>('.om-sa-supporting-row[data-kind="asset-image"] .om-sa-supporting-main')!;
+    await act(async () => imgMain.click());
+    await flush();
+    expect(document.querySelector('.om-sa-lightbox-popup')).toBeTruthy();
+    expect(document.querySelector<HTMLImageElement>('.om-sa-lightbox-img')?.src).toContain('/motion-api/assets/bg-1/versions/v-1/media');
+    expect(onOpenArtifactId).not.toHaveBeenCalled();
+
+    act(() => root.unmount());
+    expect(pauseSpy).toHaveBeenCalled();
+    container.remove();
   });
 });

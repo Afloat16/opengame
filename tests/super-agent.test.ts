@@ -14,6 +14,7 @@ import {
   SuperAgentConversations,
   extractLocalDevServerUrl,
   formatBrowserAnnotationsContext,
+  resolveGameArtifactPreviewUrl,
   superAgentConversations,
 } from '../gateway/super-agent.ts';
 import {
@@ -3529,5 +3530,161 @@ test('Super Agent always gates billed media generation approvals even in default
   assert.equal(generationCalls, 3);
   assert.equal(done.generationAutoApproved, true);
   assert.equal(done.state, 'idle');
+  await service.close();
+}));
+
+test('classifySuperAgentTool omits raw MCP action/projectId echoes and Claude tool_result resets phase back to thinking', () => fixture(async store => {
+  const inspectTool = classifySuperAgentTool('openmotion_media_use', { action: 'inspect', modality: 'image' });
+  assert.equal(inspectTool.label, 'Checked media providers');
+  assert.equal(inspectTool.summary, undefined);
+
+  const refTool = classifySuperAgentTool('openmotion_media_use', { action: 'reference', provider: 'opendesign' });
+  assert.equal(refTool.label, 'Read media provider guide');
+  assert.equal(refTool.summary, 'opendesign');
+
+  const projectTool = classifySuperAgentTool('openmotion_get_project', { projectId: '123e4567-e89b-12d3-a456-426614174000' });
+  assert.equal(projectTool.summary, undefined);
+
+  let phaseDuringTool: string | undefined;
+  let phaseAfterToolResult: string | undefined;
+  let chatId = '';
+  const service = new SuperAgentConversations(store, {
+    resolveAgent: async () => '/usr/local/bin/claude',
+    runClaude: async ({ onEvent }) => {
+      await onEvent({
+        type: 'assistant',
+        message: {
+          content: [
+            { type: 'tool_use', id: 'tu-1', name: 'mcp__openmotion__openmotion_read_workflow', input: { workflow: 'game', section: 'start' } },
+          ],
+        },
+      });
+      phaseDuringTool = (await service.get(chatId)).turnActivity?.phase;
+      await onEvent({
+        type: 'user',
+        message: {
+          content: [
+            { type: 'tool_result', tool_use_id: 'tu-1', content: '{"ok":true}', is_error: false },
+          ],
+        },
+      });
+      phaseAfterToolResult = (await service.get(chatId)).turnActivity?.phase;
+      await onEvent({ type: 'assistant', message: { content: [{ type: 'text', text: 'Done.' }] } });
+    },
+  });
+
+  const chat = await service.create({ engine: 'claude' });
+  chatId = chat.id;
+  await service.start(chat.id, { requestId: 'req-reset-phase-1', text: 'Make a puzzle game' }, {
+    origin: 'http://127.0.0.1:4173',
+  });
+  for (let i = 0; i < 80; i++) {
+    const snap = await service.get(chat.id);
+    if (snap.state === 'idle' || snap.state === 'failed') break;
+    await new Promise(resolve => setTimeout(resolve, 15));
+  }
+  const done = await service.get(chat.id);
+  assert.equal(done.state, 'idle');
+  assert.equal(phaseDuringTool, 'tool');
+  assert.equal(phaseAfterToolResult, 'thinking');
+  await service.close();
+}));
+
+test('resolveGameArtifactPreviewUrl normalizes game cover paths and zero-edit attached remix reports no changed files', () => fixture(async store => {
+  assert.equal(
+    resolveGameArtifactPreviewUrl('game-1', '/api/games/game-1/play/cover.webp'),
+    '/motion-api/games/game-1/play/cover.webp',
+  );
+  assert.equal(
+    resolveGameArtifactPreviewUrl('game-1', 'assets/cover.png'),
+    '/motion-api/games/game-1/play/assets/cover.png',
+  );
+  assert.equal(resolveGameArtifactPreviewUrl('game-1', null), undefined);
+
+  // Pre-existing remixed game directory attached on the user message should be baselined in beforeSnapshot
+  // even after openmotion_game_set_status registers the game artifact in postRoots.
+  const remixDir = path.join(store.directory, 'games', 'remix-mahjong');
+  await mkdir(path.join(remixDir, 'assets'), { recursive: true });
+  await writeFile(path.join(remixDir, 'index.html'), '<!doctype html><title>3D Mahjong</title>');
+  await writeFile(path.join(remixDir, 'cover.webp'), 'fake-webp');
+  await writeFile(path.join(remixDir, 'assets', 'bundle.js'), 'console.log(1);');
+  await writeFile(path.join(remixDir, 'game.json'), JSON.stringify({
+    id: 'remix-mahjong',
+    title: '3D Physics Mahjong',
+    description: 'Match 3D mahjong tiles',
+    genre: 'casual',
+    style: '3d',
+    orientation: 'portrait',
+    multiplayer: false,
+    maxPlayers: 1,
+    status: 'ready',
+    cover: 'cover.webp',
+    entry: 'index.html',
+    playUrl: '/api/games/remix-mahjong/play/index.html',
+    createdAt: '2026-11-25T00:00:00.000Z',
+    updatedAt: '2026-11-25T00:00:01.000Z',
+  }));
+
+  const service = new SuperAgentConversations(store, {
+    resolveAgent: async () => '/usr/local/bin/claude',
+    runClaude: async ({ onEvent }) => {
+      await onEvent({
+        type: 'assistant',
+        message: {
+          content: [
+            { type: 'tool_use', id: 'tu-ready', name: 'mcp__openmotion__openmotion_game_set_status', input: { id: 'remix-mahjong', status: 'ready' } },
+          ],
+        },
+      });
+      await onEvent({
+        type: 'user',
+        message: {
+          content: [
+            {
+              type: 'tool_result',
+              tool_use_id: 'tu-ready',
+              content: JSON.stringify({
+                id: 'remix-mahjong',
+                title: '3D Physics Mahjong',
+                genre: 'casual',
+                orientation: 'portrait',
+                status: 'ready',
+                cover: '/api/games/remix-mahjong/play/cover.webp',
+                playUrl: '/api/games/remix-mahjong/play/index.html',
+                updatedAt: '2026-11-25T00:00:02.000Z',
+              }),
+              is_error: false,
+            },
+          ],
+        },
+      });
+      await onEvent({ type: 'assistant', message: { content: [{ type: 'text', text: 'Ready to play.' }] } });
+    },
+  });
+
+  const chat = await service.create({ engine: 'claude', intent: 'game' });
+  await service.start(chat.id, {
+    requestId: 'req-remix-zero-edit',
+    text: 'Reuse · 3D Mahjong',
+    attachments: [
+      {
+        kind: 'game-project',
+        id: 'remix-mahjong',
+        title: '3D Mahjong',
+        previewUrl: '/motion-api/games/remix-mahjong/play/cover.webp',
+      },
+    ],
+  }, { origin: 'http://127.0.0.1:4173' });
+
+  for (let i = 0; i < 80; i++) {
+    const snap = await service.get(chat.id);
+    if (snap.state === 'idle' || snap.state === 'failed') break;
+    await new Promise(resolve => setTimeout(resolve, 15));
+  }
+  const done = await service.get(chat.id);
+  assert.equal(done.state, 'idle');
+  assert.equal(done.artifacts.length, 1);
+  assert.equal(done.artifacts[0]?.previewUrl, '/motion-api/games/remix-mahjong/play/cover.webp');
+  assert.equal(Object.keys(done.turnChangedFiles ?? {}).length, 0);
   await service.close();
 }));

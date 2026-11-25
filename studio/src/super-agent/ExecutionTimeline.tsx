@@ -27,7 +27,7 @@ import { AccountHandoffCard } from './AccountHandoffCard';
 import type { AccountHandoffResume } from './useAccountHandoff';
 import { openBalanceGate } from '../motion/monetization/monetizationGateBus';
 import { reportEntitlementGateClick, reportEntitlementGateView } from '../motion/pageTracking';
-import { ArtifactDeliverableCard } from './ArtifactDeliverableCard';
+import { ArtifactDeliverableCard, SupportingAssetRow } from './ArtifactDeliverableCard';
 import { FilesChangedCard, UnifiedDiffView } from './ChangedFilesTree';
 import { InlineMentionChip } from './MentionNode';
 import { ResourceThumbImage, resourceIcon, resourceImagePreviewUrl, resourceKey } from './ResourcePickerDialog';
@@ -90,18 +90,6 @@ function isWorkItem(message: SuperAgentMessage): boolean {
 function isFailedGameValidation(event?: SuperAgentToolEvent): boolean {
   return Boolean(event && event.status !== 'running'
     && (event.validationPassed ?? gameValidationPassed(event.tool, event.outputPreview)) === false);
-}
-
-function countCompletedWorkItems(workItems: SuperAgentMessage[]): number {
-  let completed = 0;
-  for (const item of workItems) {
-    if (item.role === 'tool') {
-      if (item.toolEvent?.status && item.toolEvent.status !== 'running') completed += 1;
-    } else if (item.status !== 'streaming') {
-      completed += 1;
-    }
-  }
-  return completed;
 }
 
 function resolveLiveTurnStatusText(
@@ -276,17 +264,31 @@ function groupMessagesIntoTurns(chat: SuperAgentChat): TurnGroup[] {
     const hasUnrecoveredFailure = workItems.some((m, wi) => {
       const ev = m.toolEvent;
       if (!ev) return false;
-      const failed = ev.status === 'failed' || isFailedGameValidation(ev);
+      const failedValidation = isFailedGameValidation(ev);
+      const failed = ev.status === 'failed' || failedValidation;
       if (!failed) return false;
       const normalizedTool = (ev.tool ?? '').replace(/^mcp_+openmotion_+/, '');
-      if (!normalizedTool) return true;
-      const recoveredLater = workItems.slice(wi + 1).some(later => {
-        const lev = later.toolEvent;
-        if (!lev) return false;
-        const lTool = (lev.tool ?? '').replace(/^mcp_+openmotion_+/, '');
-        return lTool === normalizedTool && lev.status === 'completed' && !isFailedGameValidation(lev);
-      });
-      return !recoveredLater;
+      if (normalizedTool) {
+        const recoveredLater = workItems.slice(wi + 1).some(later => {
+          const lev = later.toolEvent;
+          if (!lev) return false;
+          const lTool = (lev.tool ?? '').replace(/^mcp_+openmotion_+/, '');
+          return lTool === normalizedTool && lev.status === 'completed' && !isFailedGameValidation(lev);
+        });
+        if (recoveredLater) return false;
+      }
+      if (!failedValidation) {
+        const restIndex = group.rest.indexOf(m);
+        const hasLaterProgress = restIndex >= 0 && group.rest.slice(restIndex + 1).some(later =>
+          (later.role === 'tool' && later.toolEvent?.status === 'completed' && !isFailedGameValidation(later.toolEvent))
+          || (later.role === 'assistant' && Boolean(later.text.trim())),
+        );
+        const isPrep = isReadOnlyPrepTool(ev, { includeFailed: true });
+        const isArgErr = isInternalArgError(ev);
+        if (isPrep && (isArgErr || hasLaterProgress)) return false;
+        if (isArgErr && hasLaterProgress) return false;
+      }
+      return true;
     });
 
     let durationMs: number | undefined;
@@ -360,7 +362,9 @@ function normalizeInternalJargon(text: string, t: Translate): string {
       idx % 2 === 1
         ? segment
         : segment
-            .replace(/\bOpenMotion Game Skill\b/gi, replacement)
+            .replace(/([\u4e00-\u9fff])\s+OpenMotion\s*(?:游戏工作流|游戏技能|工作流)/gi, `$1${replacement}`)
+            .replace(/OpenMotion\s*(?:游戏工作流|游戏技能|工作流)/gi, replacement)
+            .replace(/\bOpenMotion Game (?:Skill|Workflow)\b/gi, replacement)
             .replace(/\bopenmotion-game\b/gi, replacement)
     ))
     .join('');
@@ -406,19 +410,88 @@ function formatConsumerChatError(rawError: string, t: Translate): { summary: str
   return { summary: trimmed };
 }
 
+const REDUNDANT_MCP_ACTION_SUMMARIES = new Set([
+  'inspect',
+  'reference',
+  'list',
+  'models',
+  'providers',
+  'status',
+  'get',
+  'describe',
+  'quote',
+]);
+
+const RAW_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+function parseToolInputArgs(inputPreview?: string): Record<string, unknown> | undefined {
+  if (!inputPreview) return undefined;
+  try {
+    const parsed = JSON.parse(inputPreview);
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return undefined;
+    return parsed as Record<string, unknown>;
+  } catch {
+    return undefined;
+  }
+}
+
+function isInternalArgError(event?: SuperAgentToolEvent): boolean {
+  if (!event || event.status !== 'failed') return false;
+  const summary = event.summary?.trim() ?? '';
+  if (/^INVALID_ARGUMENT\b/i.test(summary)) return true;
+  const output = event.outputPreview ?? '';
+  return /\bINVALID_ARGUMENT:/i.test(output);
+}
+
+function unwrapPosixShellCommand(raw: string): string {
+  const trimmed = raw.trim();
+  const wrapper = /^(?:\/(?:usr\/)?bin\/)?(?:zsh|bash|sh)\s+-[a-z]*c\s+([\s\S]+)$/.exec(trimmed);
+  if (!wrapper) return trimmed;
+  let inner = wrapper[1].trim();
+  if (inner.length >= 2 && inner.startsWith("'") && inner.endsWith("'")) {
+    return inner.slice(1, -1);
+  }
+  if (inner.length >= 2 && inner.startsWith('"') && inner.endsWith('"')) {
+    inner = inner.slice(1, -1).replace(/\\(["\\$`])/g, '$1');
+    return inner;
+  }
+  return inner;
+}
+
+function isAgentMemoryShellCommand(event?: SuperAgentToolEvent): boolean {
+  if (!event || event.category !== 'command') return false;
+  const raw = (event.command || event.summary || '').trim();
+  if (!raw) return false;
+  const inner = unwrapPosixShellCommand(raw).trim();
+  if (!/(?:\.codex[\\/]memories\b|MEMORY\.md\b|\.claude[\\/][^\s'"]*memory)/i.test(inner)) {
+    return false;
+  }
+  // Reject command substitutions outside single-quoted literals (double quotes still expand `...` and $(...)).
+  const withoutSingleQuotes = inner.replace(/'[^']*'/g, ' ');
+  if (/`|\$\(/.test(withoutSingleQuotes)) return false;
+
+  // Strip both single- and double-quoted literals before checking shell operators and pipes.
+  const unquoted = withoutSingleQuotes
+    .replace(/"(?:\\.|[^"\\])*"/g, ' ')
+    .replace(/\s*2>\s*\/dev\/null\b/g, ' ')
+    .trim();
+  if (/[><]|&&|\|\||;|\b(?:tee|rm|mv|cp|chmod|chown|python\d*|node|perl|ruby)\b|\bsed\s+-i\b/i.test(unquoted)) {
+    return false;
+  }
+  const stages = unquoted.split('|').map(stage => stage.trim()).filter(Boolean);
+  if (stages.length === 0) return false;
+  if (!/^(?:rg|grep|cat|head|tail|ls|find|test|\[|sed)\b/.test(stages[0])) return false;
+  return stages.slice(1).every(stage => /^(?:rg|grep|head|tail|wc|sort|uniq|cut|awk)\b/.test(stage));
+}
+
 function workflowGuideDetail(event: SuperAgentToolEvent, t: Translate): string | undefined {
   const tool = (event.tool ?? '').replace(/^mcp_+openmotion_+/, '');
   if (tool !== 'openmotion_read_workflow' || !event.inputPreview || event.status === 'failed') {
     return sanitizeUserHomePath(event.summary);
   }
 
-  let args: Record<string, unknown>;
-  try {
-    args = JSON.parse(event.inputPreview);
-    if (!args || typeof args !== 'object' || Array.isArray(args)) return sanitizeUserHomePath(event.summary);
-  } catch {
-    return sanitizeUserHomePath(event.summary);
-  }
+  const args = parseToolInputArgs(event.inputPreview);
+  if (!args) return sanitizeUserHomePath(event.summary);
 
   const workflow = args.workflow ?? 'production';
   const section = args.section ?? 'start';
@@ -431,32 +504,231 @@ function workflowGuideDetail(event: SuperAgentToolEvent, t: Translate): string |
   return `${workflow}/${section}`;
 }
 
-function isReadOnlyPrepTool(event?: SuperAgentToolEvent): boolean {
-  if (!event || event.status === 'running' || event.status === 'failed') return false;
+function formatToolSummaryDetail(
+  event: SuperAgentToolEvent,
+  t: Translate,
+  options: { isConsumerCreativeTurn?: boolean } = {},
+): string | undefined {
+  if (isAgentMemoryShellCommand(event)) return undefined;
+  const raw = workflowGuideDetail(event, t)?.trim();
+  if (!raw) return undefined;
+  if (event.category === 'mcp' && REDUNDANT_MCP_ACTION_SUMMARIES.has(raw.toLowerCase())) {
+    return undefined;
+  }
+  if (options.isConsumerCreativeTurn && event.category === 'mcp' && RAW_UUID_RE.test(raw)) {
+    return undefined;
+  }
+  const capabilityMatch = /^(\d+)\s+capability\(s\)$/i.exec(raw);
+  if (capabilityMatch) {
+    return t('{count} capabilities', { count: Number(capabilityMatch[1]) });
+  }
+  const resourceMatch = /^(\d+)\s+resource\(s\)$/i.exec(raw);
+  if (resourceMatch) {
+    return t('{count} resources', { count: Number(resourceMatch[1]) });
+  }
+  const filesMatch = /^(\d+)\s+files?$/i.exec(raw);
+  if (filesMatch) {
+    return t('{count} files', { count: Number(filesMatch[1]) });
+  }
+  return raw;
+}
+
+function isReadOnlyPrepTool(
+  event?: SuperAgentToolEvent,
+  options: { includeFailed?: boolean; includeRunning?: boolean } = {},
+): boolean {
+  if (!event) return false;
+  if (event.artifactId) return false;
+  if (!options.includeRunning && event.status === 'running') return false;
+  if (!options.includeFailed && (event.status === 'failed' || isFailedGameValidation(event))) return false;
+  if (isAgentMemoryShellCommand(event)) return true;
+
   const tool = (event.tool ?? '').replace(/^mcp_+openmotion_+/, '');
   if (
     tool === 'openmotion_read_workflow'
     || tool === 'openmotion_capability_discover'
+    || tool === 'openmotion_asset_models'
     || tool === 'openmotion_game_get'
     || tool === 'openmotion_game_read_file'
+    || tool === 'openmotion_design_catalog'
     || tool === 'openmotion_list_skills'
     || tool === 'openmotion_get_skill'
+    || tool === 'openmotion_list_templates'
+    || tool === 'openmotion_get_template'
+    || tool === 'openmotion_get_project'
+    || tool === 'openmotion_list_versions'
     || tool === 'openmotion_workspace_resources'
   ) {
     return true;
   }
+
+  const args = parseToolInputArgs(event.inputPreview);
+  const action = typeof args?.action === 'string' ? args.action : '';
+
+  if (tool === 'openmotion_media_use') {
+    if (action) return action === 'inspect' || action === 'reference' || action === 'models' || action === 'schema';
+    return event.label !== 'Generated media' && event.label !== 'Cancelled generation job';
+  }
+  if (tool === 'openmotion_design_edit') {
+    if (action) return action === 'read_file' || action === 'list_files' || action === 'inspect' || action === 'get';
+    return event.category === 'file_read';
+  }
+  if (tool === 'openmotion_asset_manage' || tool === 'openmotion_assets_use' || tool === 'openmotion_assets') {
+    // Deliberately exclude "status" because media generation polling waits up to 55s and delivers artifacts.
+    return action === 'list' || action === 'get' || action === 'read';
+  }
+  if (tool === 'openmotion_job_manage') {
+    return action === 'list';
+  }
+  if (tool === 'openmotion_game_wechat') {
+    return action === 'status';
+  }
   return event.category === 'file_read';
+}
+
+function presentProgressiveToolStatus(
+  t: Translate,
+  toolName: string,
+  event?: SuperAgentToolEvent,
+): string {
+  if (event && isReadOnlyPrepTool(event, { includeRunning: true, includeFailed: true })) {
+    return t('Preparing workflow guides & environment…');
+  }
+  const normalized = toolName.replace(/^mcp_+openmotion_+/, '');
+  const args = parseToolInputArgs(event?.inputPreview);
+  const action = typeof args?.action === 'string' ? args.action : '';
+  if (
+    normalized === 'openmotion_read_workflow'
+    || normalized === 'openmotion_capability_discover'
+    || normalized === 'openmotion_asset_models'
+    || normalized === 'openmotion_game_get'
+    || normalized === 'openmotion_game_read_file'
+    || normalized === 'openmotion_design_catalog'
+    || normalized === 'openmotion_list_skills'
+    || normalized === 'openmotion_get_skill'
+    || normalized === 'openmotion_list_templates'
+    || normalized === 'openmotion_get_template'
+    || normalized === 'openmotion_get_project'
+    || normalized === 'openmotion_list_versions'
+    || normalized === 'openmotion_workspace_resources'
+  ) {
+    return t('Preparing workflow guides & environment…');
+  }
+  switch (normalized) {
+    case 'openmotion_game_create':
+      return t('Creating game project…');
+    case 'openmotion_game_write_files':
+      return t('Writing game source files…');
+    case 'openmotion_game_validate':
+      return t('Validating game build…');
+    case 'openmotion_game_simulate':
+      return t('Simulating game logic…');
+    case 'openmotion_game_playtest':
+      return t('Playtesting game…');
+    case 'openmotion_game_capture_cover':
+      return t('Capturing game cover…');
+    case 'openmotion_game_update_meta':
+    case 'openmotion_game_set_status':
+      return t('Updating game details…');
+    case 'openmotion_game_publish':
+      return t('Publishing game…');
+    case 'openmotion_capability_run':
+      return t('Generating media assets…');
+    case 'openmotion_media_use':
+      if (action === 'generate') return t('Generating media assets…');
+      return t('Preparing workflow guides & environment…');
+    case 'openmotion_assets_use':
+    case 'openmotion_assets':
+      if (action === 'generate') return t('Generating media assets…');
+      if (action === 'status') return t('Waiting for media generation…');
+      if (action === 'list' || action === 'get' || action === 'read') {
+        return t('Preparing workflow guides & environment…');
+      }
+      return t('Working on your request…');
+    case 'openmotion_job_manage':
+      if (action === 'status' || action === 'resume') return t('Waiting for media generation…');
+      if (action === 'list') return t('Preparing workflow guides & environment…');
+      return t('Working on your request…');
+    case 'openmotion_design_project':
+      if (action === 'create') return t('Creating design project…');
+      return t('Working on your request…');
+    case 'openmotion_design_edit':
+      if (action === 'write') return t('Updating design source…');
+      if (action === 'read_file' || action === 'list_files' || action === 'inspect' || action === 'get') {
+        return t('Preparing workflow guides & environment…');
+      }
+      return t('Working on your request…');
+    case 'openmotion_create_project':
+      return t('Creating Motion project…');
+    case 'openmotion_edit_project':
+      return t('Updating Motion composition…');
+    case 'openmotion_export_request':
+      return t('Exporting video…');
+    default:
+      return t('Working on your request…');
+  }
+}
+
+function resolveConsumerLiveActivity(
+  t: Translate,
+  options: { chat: SuperAgentChat; turn: TurnGroup; sending?: boolean; engineLabel?: string },
+): { icon: string; spinning: boolean; text: string } {
+  const { chat, turn, sending, engineLabel } = options;
+  if (sending && chat.state !== 'running' && chat.state !== 'waiting') {
+    return { icon: 'loader-4-line', spinning: true, text: t('Starting…') };
+  }
+  const activity = chat.turnActivity;
+  const phase = activity?.phase ?? 'thinking';
+  if (phase === 'connecting') {
+    return {
+      icon: 'loader-4-line',
+      spinning: true,
+      text: t('Connecting to {agent}…', { agent: activity?.label || engineLabel || 'Super Agent' }),
+    };
+  }
+  if (phase === 'waiting_approval') {
+    return { icon: 'loader-4-line', spinning: true, text: t('Waiting for approval…') };
+  }
+  if (phase === 'streaming') {
+    return { icon: 'edit-line', spinning: false, text: t('Writing response…') };
+  }
+  const runningTools = turn.workItems
+    .map(item => (item.role === 'tool' ? item.toolEvent : undefined))
+    .filter((ev): ev is SuperAgentToolEvent => Boolean(ev && ev.status === 'running'));
+  if (runningTools.length > 0) {
+    const runningSubstantive = [...runningTools].reverse().find(
+      ev => !isReadOnlyPrepTool(ev, { includeRunning: true, includeFailed: true }),
+    );
+    const activeEvent = runningSubstantive ?? runningTools[runningTools.length - 1];
+    return {
+      icon: 'loader-4-line',
+      spinning: true,
+      text: presentProgressiveToolStatus(t, activeEvent.tool, activeEvent),
+    };
+  }
+  if (phase === 'tool' && activity?.activeToolName) {
+    return {
+      icon: 'loader-4-line',
+      spinning: true,
+      text: presentProgressiveToolStatus(t, activity.activeToolName),
+    };
+  }
+  return { icon: 'sparkling-line', spinning: false, text: t('Thinking…') };
 }
 
 function ToolStepRow({
   message,
   selfHealed = false,
   suppressArtifactAction = false,
+  isConsumerCreativeTurn = false,
+  hideSubSecondDuration = false,
   onOpenArtifactId,
 }: {
   message: SuperAgentMessage;
   selfHealed?: boolean;
   suppressArtifactAction?: boolean;
+  isConsumerCreativeTurn?: boolean;
+  hideSubSecondDuration?: boolean;
   onOpenArtifactId: (artifactId: string) => void;
 }) {
   const { t } = useI18n();
@@ -468,29 +740,39 @@ function ToolStepRow({
   const failedValidation = isFailedGameValidation(ev);
   const rawFailed = failedValidation || ev.status === 'failed';
   const status = rawFailed ? (selfHealed ? 'completed' : 'failed') : (ev.status ?? 'completed');
+  const isMemoryProbe = isAgentMemoryShellCommand(ev);
   const fileOp = ev.fileOp ?? ev.files?.[0];
   const diffFiles = (ev.files ?? (fileOp ? [fileOp] : [])).filter(f => f.diffPreview);
   const hasRawPayloads = Boolean((ev.inputPreview && ev.category !== 'command' && diffFiles.length === 0) || ev.outputPreview);
   const hasBody = Boolean(ev.command || diffFiles.length > 0 || hasRawPayloads);
   const isOpen = hasBody && expanded;
-  const displayDurationMs = status === 'running'
+  const rawDurationMs = status === 'running'
     ? (liveElapsedMs >= 1000 ? liveElapsedMs : undefined)
     : ev.durationMs;
+  const displayDurationMs = hideSubSecondDuration && rawDurationMs !== undefined && rawDurationMs < 1000
+    ? undefined
+    : rawDurationMs;
+  const labelText = failedValidation && !selfHealed
+    ? t('Game validation failed')
+    : isMemoryProbe
+      ? t('Checked workspace memory')
+      : t(ev.label || message.text);
   const detail = selfHealed
     ? t('Adjusted parameters and retried automatically')
-    : workflowGuideDetail(ev, t);
+    : formatToolSummaryDetail(ev, t, { isConsumerCreativeTurn });
+  const showExitPill = ev.exitCode !== undefined && !(isMemoryProbe && ev.exitCode === 0);
 
   const headerContent = (
     <>
       <span
         className="om-sa-tool-status"
         data-status={status}
-        data-category={ev.category || 'tool'}
+        data-category={isMemoryProbe ? 'search' : (ev.category || 'tool')}
       >
-        <RemixIcon name={selfHealed ? 'refresh-line' : categoryIcon(ev.category, status)} size={15} />
+        <RemixIcon name={selfHealed ? 'refresh-line' : isMemoryProbe ? 'book-open-line' : categoryIcon(ev.category, status)} size={15} />
       </span>
-      <span className="om-sa-tool-label">{t(failedValidation && !selfHealed ? 'Game validation failed' : ev.label || message.text)}</span>
-      {detail && detail !== ev.label && (
+      <span className="om-sa-tool-label">{labelText}</span>
+      {detail && detail !== ev.label && detail !== labelText && (
         <span className="om-sa-tool-summary" title={detail}>{detail}</span>
       )}
       <span className="om-sa-step-trail">
@@ -504,7 +786,7 @@ function ToolStepRow({
             )}
           </span>
         )}
-        {ev.exitCode !== undefined && (
+        {showExitPill && (
           <span className="om-sa-exit-pill" data-ok={ev.exitCode === 0 || undefined}>
             {ev.exitCode === 0 ? 'exit 0' : `exit ${ev.exitCode}`}
           </span>
@@ -635,14 +917,19 @@ function ProgressNoteStepRow({
 
 function PrepStepsGroupRow({
   items,
+  selfHealedIds,
+  isConsumerCreativeTurn = false,
   onOpenArtifactId,
 }: {
   items: SuperAgentMessage[];
+  selfHealedIds: ReadonlySet<string>;
+  isConsumerCreativeTurn?: boolean;
   onOpenArtifactId: (artifactId: string) => void;
 }) {
   const { t } = useI18n();
   const [open, setOpen] = useState(false);
   const totalMs = items.reduce((sum, item) => sum + (item.toolEvent?.durationMs ?? 0), 0);
+  const showGroupDuration = totalMs > 0 && (!isConsumerCreativeTurn || totalMs >= 1000);
   return (
     <div className="om-sa-prep-group" data-open={open || undefined}>
       <Button
@@ -662,7 +949,7 @@ function PrepStepsGroupRow({
           {t('{count} checks', { count: items.length })}
         </span>
         <span className="om-sa-step-trail">
-          {totalMs > 0 && <span className="om-sa-step-time">{formatElapsedDuration(totalMs)}</span>}
+          {showGroupDuration && <span className="om-sa-step-time">{formatElapsedDuration(totalMs)}</span>}
           <span className="om-sa-step-chevron" aria-hidden="true">
             <RemixIcon name="arrow-down-s-line" size={14} />
           </span>
@@ -674,7 +961,10 @@ function PrepStepsGroupRow({
             <ToolStepRow
               key={item.id}
               message={item}
+              selfHealed={selfHealedIds.has(item.id)}
               suppressArtifactAction
+              isConsumerCreativeTurn={isConsumerCreativeTurn}
+              hideSubSecondDuration={isConsumerCreativeTurn}
               onOpenArtifactId={onOpenArtifactId}
             />
           ))}
@@ -766,6 +1056,7 @@ function WorkLogSection({
   turn,
   chat,
   isActiveTurn,
+  isConsumerCreativeTurn = false,
   sending = false,
   hideInlineStatus = false,
   hasPendingApproval = false,
@@ -779,6 +1070,7 @@ function WorkLogSection({
   turn: TurnGroup;
   chat: SuperAgentChat;
   isActiveTurn: boolean;
+  isConsumerCreativeTurn?: boolean;
   sending?: boolean;
   hideInlineStatus?: boolean;
   hasPendingApproval?: boolean;
@@ -791,11 +1083,13 @@ function WorkLogSection({
 }) {
   const { t } = useI18n();
   const isTurnFinished = !isActiveTurn && !turn.hasRunning && turn.assistantItems.length > 0;
-  const shouldAutoExpand = !isTurnFinished;
-  const [userToggled, setUserToggled] = useState<boolean | null>(null);
-  const [mountStartedAt] = useState(() => Date.now());
   const effectiveActivity = activity ?? chat.turnActivity;
   const isRunning = (isActiveTurn && !hasPendingApproval) || turn.hasRunning;
+  const shouldAutoExpand = isConsumerCreativeTurn
+    ? (!isRunning && !isTurnFinished)
+    : !isTurnFinished;
+  const [userToggled, setUserToggled] = useState<boolean | null>(null);
+  const [mountStartedAt] = useState(() => Date.now());
   const liveStart = effectiveActivity?.startedAt ?? turn.workItems[0]?.createdAt ?? turn.user?.createdAt ?? mountStartedAt;
   const liveRunningMs = useLiveElapsedMs(liveStart, isRunning, 250);
   const activeReasoningId = isActiveTurn && (!effectiveActivity || effectiveActivity.phase === 'thinking')
@@ -815,26 +1109,23 @@ function WorkLogSection({
 
   const toolCount = turn.workItems.filter(m => m.role === 'tool').length;
   const stepCount = turn.workItems.length;
-  const completedCount = countCompletedWorkItems(turn.workItems);
   const plan = isActiveTurn ? (chat.turnActivity?.plan ?? []) : [];
   const planTotal = plan.length;
   const planDone = plan.filter(item => item.status === 'completed').length;
   const durationStr = formatElapsedDuration(turn.durationMs);
   const stepMeta = isRunning
-    ? (planTotal > 0
-        ? t('{done}/{total} tasks', { done: planDone, total: planTotal })
-        : stepCount > 0
-          ? t('{done}/{total} steps', { done: completedCount, total: stepCount })
-          : '')
-    : (stepCount > 0 && durationStr ? t('{count} steps', { count: stepCount }) : '');
+    ? (planTotal > 0 ? t('{done}/{total} tasks', { done: planDone, total: planTotal }) : '')
+    : (!isConsumerCreativeTurn && stepCount > 0 && durationStr ? t('{count} steps', { count: stepCount }) : '');
 
   const summaryTitle = isRunning
     ? t('Working for {time}', { time: formatWorkingDuration(liveRunningMs) })
-    : durationStr
-      ? t('Worked for {duration} · {count} steps', { duration: durationStr, count: stepCount })
-      : toolCount > 0
-        ? t('Execution steps ({count})', { count: stepCount })
-        : t('Thought');
+    : isConsumerCreativeTurn
+      ? (durationStr ? t('Worked for {duration}', { duration: durationStr }) : t('Process details'))
+      : durationStr
+        ? t('Worked for {duration} · {count} steps', { duration: durationStr, count: stepCount })
+        : toolCount > 0
+          ? t('Execution steps ({count})', { count: stepCount })
+          : t('Thought');
 
   const hasActiveWorkItem = turn.workItems.some(
     item => (item.role === 'tool' && item.toolEvent?.status === 'running')
@@ -850,6 +1141,51 @@ function WorkLogSection({
       ? 'sparkling-line'
       : 'loader-4-line';
   const spinningIcon = phaseIcon === 'loader-4-line';
+
+  const showConsumerLiveDigest = isConsumerCreativeTurn
+    && !expanded
+    && isActiveTurn
+    && showInlineLive
+    && turn.assistantItems.length === 0;
+
+  const consumerDigest = showConsumerLiveDigest ? (() => {
+    const progressNotes = turn.timelineEntries.filter(
+      entry => entry.role === 'assistant' && Boolean(entry.text.trim()),
+    );
+    const latestNote = progressNotes[progressNotes.length - 1];
+    const lastArtifactEntryById = new Map<string, string>();
+    for (const entry of turn.workItems) {
+      if (entry.toolEvent?.artifactId) {
+        lastArtifactEntryById.set(entry.toolEvent.artifactId, entry.id);
+      }
+    }
+
+    const milestoneByLabel = new Map<string, { id: string; label: string; artifactId?: string }>();
+    let completedPrepCount = 0;
+    for (const entry of turn.workItems) {
+      if (entry.role !== 'tool' || !entry.toolEvent) continue;
+      const ev = entry.toolEvent;
+      if (ev.status !== 'completed' || isFailedGameValidation(ev)) continue;
+      if (isReadOnlyPrepTool(ev)) {
+        completedPrepCount += 1;
+        continue;
+      }
+      const label = t(ev.label || entry.text);
+      const artifactId = ev.artifactId && lastArtifactEntryById.get(ev.artifactId) === entry.id
+        ? ev.artifactId
+        : undefined;
+      milestoneByLabel.delete(label);
+      milestoneByLabel.set(label, { id: entry.id, label, artifactId });
+    }
+    const recentMilestones = [...milestoneByLabel.values()].slice(-3);
+    const liveActivity = resolveConsumerLiveActivity(t, { chat, turn, sending, engineLabel });
+    return {
+      latestNote,
+      recentMilestones,
+      showPrepCompleted: recentMilestones.length === 0 && completedPrepCount >= 2,
+      liveActivity,
+    };
+  })() : null;
 
   return (
     <div className="om-sa-work-log" data-active={isActiveTurn || undefined}>
@@ -872,13 +1208,72 @@ function WorkLogSection({
           {stepMeta && isRunning && (
             <span className="om-sa-work-summary-meta">{stepMeta}</span>
           )}
-          {!isTurnFinished && turn.hasFailure && (
+          {!isRunning && !isTurnFinished && turn.hasFailure && (
             <span className="om-sa-work-pill" data-tone="danger">
               {t('Needs attention')}
             </span>
           )}
         </span>
       </Button>
+      {consumerDigest && (
+        <div className="om-sa-live-digest">
+          {consumerDigest.latestNote && (
+            <ProgressNoteStepRow
+              message={consumerDigest.latestNote}
+              onCopyText={onCopyText}
+              onOpenWebUrl={onOpenWebUrl}
+              onOpenFilePath={onOpenFilePath}
+            />
+          )}
+          {planTotal > 0 ? (
+            <LivePlanCard plan={chat.turnActivity?.plan} />
+          ) : (
+            <>
+              {consumerDigest.recentMilestones.map(milestone => (
+                <div key={milestone.id} className="om-sa-live-milestone-row">
+                  <span className="om-sa-live-milestone-icon" aria-hidden="true">
+                    <RemixIcon name="check-line" size={14} />
+                  </span>
+                  <span className="om-sa-live-milestone-label">{milestone.label}</span>
+                  {milestone.artifactId && (
+                    <Button
+                      variant="plain"
+                      type="button"
+                      className="om-sa-tool-view-btn"
+                      onClick={() => onOpenArtifactId(milestone.artifactId!)}
+                    >
+                      <span>{t('View in Viewer')}</span>
+                      <RemixIcon name="arrow-right-up-line" size={13} />
+                    </Button>
+                  )}
+                </div>
+              ))}
+              {consumerDigest.showPrepCompleted && (
+                <div className="om-sa-live-milestone-row" data-kind="prep">
+                  <span className="om-sa-live-milestone-icon" aria-hidden="true">
+                    <RemixIcon name="book-open-line" size={14} />
+                  </span>
+                  <span className="om-sa-live-milestone-label">
+                    {t('Reviewed workflow guides & project context')}
+                  </span>
+                </div>
+              )}
+            </>
+          )}
+          <div className="om-sa-live-reply-phase" role="status" aria-live="polite">
+            <span
+              className="om-sa-live-reply-icon"
+              data-spinning={consumerDigest.liveActivity.spinning || undefined}
+              aria-hidden="true"
+            >
+              <RemixIcon name={consumerDigest.liveActivity.icon} size={14} />
+            </span>
+            <span className="om-sa-live-status-label om-sa-shimmer-text">
+              {consumerDigest.liveActivity.text}
+            </span>
+          </div>
+        </div>
+      )}
       {expanded && (
         <div className="om-sa-work-items">
           {(() => {
@@ -894,33 +1289,48 @@ function WorkLogSection({
               }
               if (ev && ev.status === 'failed' && !isFailedGameValidation(ev)) {
                 const curTool = (ev.tool ?? '').replace(/^mcp_+openmotion_+/, '');
-                if (curTool) {
-                  const healed = entries.slice(i + 1).some(later => {
-                    const lev = later.toolEvent;
-                    if (!lev) return false;
-                    const lTool = (lev.tool ?? '').replace(/^mcp_+openmotion_+/, '');
-                    return lTool === curTool && lev.status === 'completed' && !isFailedGameValidation(lev);
-                  });
-                  if (healed) selfHealedIds.add(cur.id);
+                const laterEntries = entries.slice(i + 1);
+                const healedSameTool = Boolean(curTool) && laterEntries.some(later => {
+                  const lev = later.toolEvent;
+                  if (!lev) return false;
+                  const lTool = (lev.tool ?? '').replace(/^mcp_+openmotion_+/, '');
+                  return lTool === curTool && lev.status === 'completed' && !isFailedGameValidation(lev);
+                });
+                const hasLaterProgress = laterEntries.some(later =>
+                  (later.role === 'tool' && later.toolEvent?.status === 'completed' && !isFailedGameValidation(later.toolEvent))
+                  || (later.role === 'assistant' && Boolean(later.text.trim())),
+                );
+                const prepInternalNoise = isReadOnlyPrepTool(ev, { includeFailed: true })
+                  && (isInternalArgError(ev) || hasLaterProgress);
+                if (healedSameTool || prepInternalNoise) {
+                  selfHealedIds.add(cur.id);
                 }
               }
             }
+
+            const isGroupablePrepEntry = (entry: SuperAgentMessage): boolean => {
+              if (entry.role !== 'tool' || !entry.toolEvent) return false;
+              if (isReadOnlyPrepTool(entry.toolEvent)) return true;
+              return selfHealedIds.has(entry.id) && isReadOnlyPrepTool(entry.toolEvent, { includeFailed: true });
+            };
 
             const rendered: ReactNode[] = [];
             let i = 0;
             while (i < entries.length) {
               const item = entries[i];
-              if (!isRunning && item.role === 'tool' && isReadOnlyPrepTool(item.toolEvent)) {
+              if (isGroupablePrepEntry(item)) {
                 let j = i + 1;
-                while (j < entries.length && entries[j].role === 'tool' && isReadOnlyPrepTool(entries[j].toolEvent)) {
+                while (j < entries.length && isGroupablePrepEntry(entries[j])) {
                   j += 1;
                 }
-                if (j - i >= 3) {
+                if (j - i >= 2) {
                   const batch = entries.slice(i, j);
                   rendered.push(
                     <PrepStepsGroupRow
                       key={`prep:${batch[0].id}`}
                       items={batch}
+                      selfHealedIds={selfHealedIds}
+                      isConsumerCreativeTurn={isConsumerCreativeTurn}
                       onOpenArtifactId={onOpenArtifactId}
                     />,
                   );
@@ -959,6 +1369,7 @@ function WorkLogSection({
                     message={item}
                     selfHealed={selfHealedIds.has(item.id)}
                     suppressArtifactAction={suppressArtifactAction}
+                    isConsumerCreativeTurn={isConsumerCreativeTurn}
                     onOpenArtifactId={onOpenArtifactId}
                   />,
                 );
@@ -972,7 +1383,11 @@ function WorkLogSection({
               <span className="om-sa-live-reply-icon" data-spinning={spinningIcon || undefined} aria-hidden="true">
                 <RemixIcon name={phaseIcon} size={14} />
               </span>
-              <span className="om-sa-live-status-label om-sa-shimmer-text">{statusText}</span>
+              <span className="om-sa-live-status-label om-sa-shimmer-text">
+                {isConsumerCreativeTurn
+                  ? resolveConsumerLiveActivity(t, { chat, turn, sending, engineLabel }).text
+                  : statusText}
+              </span>
             </div>
           )}
           {showInlineLive && <LivePlanCard plan={chat.turnActivity?.plan} />}
@@ -1013,12 +1428,10 @@ function LiveTurnStatusBar({
   chat,
   sending,
   engineLabel,
-  stepStats,
 }: {
   chat: SuperAgentChat;
   sending?: boolean;
   engineLabel?: string;
-  stepStats: { done: number; total: number };
 }) {
   const { t } = useI18n();
   const [mountStartedAt] = useState(() => Date.now());
@@ -1033,9 +1446,7 @@ function LiveTurnStatusBar({
   const planDone = plan.filter(item => item.status === 'completed').length;
   const stepMeta = planTotal > 0
     ? t('{done}/{total} tasks', { done: planDone, total: planTotal })
-    : stepStats.total > 0
-      ? t('{done}/{total} steps', { done: stepStats.done, total: stepStats.total })
-      : '';
+    : '';
   const phaseIcon = phase === 'streaming'
     ? 'edit-line'
     : phase === 'thinking'
@@ -1084,16 +1495,6 @@ export function SuperAgentLiveProgressDock({
   const [mountStartedAt] = useState(() => Date.now());
   const startedAt = busy ? (chat?.turnActivity?.startedAt || chat?.updatedAt || mountStartedAt) : mountStartedAt;
   const elapsedMs = useLiveElapsedMs(startedAt, active, 200);
-  const lastTurnStats = useMemo(() => {
-    if (!chat) return { total: 0, done: 0 };
-    const workItems: SuperAgentMessage[] = [];
-    for (let i = chat.messages.length - 1; i >= 0; i -= 1) {
-      const m = chat.messages[i];
-      if (m.role === 'user') break;
-      if (isWorkItem(m)) workItems.push(m);
-    }
-    return { total: workItems.length, done: countCompletedWorkItems(workItems) };
-  }, [chat]);
 
   if (!active || (chat?.approvals.length ?? 0) > 0) return null;
 
@@ -1104,9 +1505,7 @@ export function SuperAgentLiveProgressDock({
   const statusText = resolveLiveTurnStatusText(t, { chat, sending, engineLabel });
   const stepMeta = planTotal > 0
     ? t('{done}/{total} tasks', { done: planDone, total: planTotal })
-    : lastTurnStats.total > 0
-      ? t('{done}/{total} steps', { done: lastTurnStats.done, total: lastTurnStats.total })
-      : '';
+    : '';
 
   return (
     <div className="om-sa-progress-dock" role="status" aria-live="polite">
@@ -1416,6 +1815,7 @@ export function ExecutionTimeline({
   hideApprovals = false,
   continueDisabled,
   engineLabel,
+  activeViewerArtifactId = null,
   onOpenArtifactId,
   onOpenChangedFile,
   onPreviewAttachment,
@@ -1441,6 +1841,7 @@ export function ExecutionTimeline({
   hideApprovals?: boolean;
   continueDisabled?: boolean;
   engineLabel?: string;
+  activeViewerArtifactId?: string | null;
   onOpenArtifactId: (artifactId: string) => void;
   onOpenChangedFile?: (file: SuperAgentFileOperation) => void;
   onPreviewAttachment: (attachment: SuperAgentResourceAttachment) => void;
@@ -1553,6 +1954,7 @@ export function ExecutionTimeline({
               turn={turn}
               chat={chat}
               isActiveTurn={isActiveTurn}
+              isConsumerCreativeTurn={Boolean(chat.intent && chat.intent !== 'coding')}
               sending={sending}
               hideInlineStatus={hideInlineStatus}
               hasPendingApproval={chat.approvals.length > 0}
@@ -1569,6 +1971,100 @@ export function ExecutionTimeline({
                 ? turn.artifacts.filter(artifact => artifact.kind !== 'workspace-file')
                 : [];
               const isConsumerCreativeTurn = Boolean(chat.intent && chat.intent !== 'coding');
+              const primaryKinds = new Set<SuperAgentArtifact['kind']>([
+                'game-project',
+                'design-project',
+                'motion-project',
+                'motion-export',
+              ]);
+              const supportingKinds = new Set<SuperAgentArtifact['kind']>([
+                'asset-image',
+                'asset-audio',
+                'asset-video',
+              ]);
+              const primaryArtifacts = deliverableArtifacts.filter(artifact => primaryKinds.has(artifact.kind));
+              const hasPrimaryProject = primaryArtifacts.length > 0;
+              const heroDeliverables = hasPrimaryProject
+                ? [
+                    ...primaryArtifacts,
+                    ...deliverableArtifacts.filter(
+                      artifact => !primaryKinds.has(artifact.kind) && !supportingKinds.has(artifact.kind),
+                    ),
+                  ]
+                : deliverableArtifacts;
+              const supportingAssets = hasPrimaryProject
+                ? deliverableArtifacts.filter(artifact => supportingKinds.has(artifact.kind))
+                : [];
+              const useHeroSingleLayout =
+                heroDeliverables.length === 1
+                && (
+                  hasPrimaryProject
+                  || heroDeliverables[0].kind === 'asset-image'
+                  || heroDeliverables[0].kind === 'asset-video'
+                );
+
+              const filesChangedSection = !isActiveTurn && turn.changedFiles.length > 0 ? (
+                <FilesChangedCard
+                  files={turn.changedFiles}
+                  projectDir={chat.projectDir}
+                  defaultExpanded={!isConsumerCreativeTurn}
+                  subtle={isConsumerCreativeTurn}
+                  onCopyText={onCopyText}
+                  onOpenFile={onOpenChangedFile}
+                />
+              ) : null;
+
+              const deliverablesSection = deliverableArtifacts.length > 0 ? (
+                <div
+                  className="om-sa-deliverables-group"
+                  data-layout={useHeroSingleLayout ? 'hero' : undefined}
+                >
+                  {heroDeliverables.length > 0 && (
+                    <div
+                      className="om-sa-deliverables"
+                      data-count={heroDeliverables.length === 1 ? 'single' : 'multi'}
+                      data-layout={useHeroSingleLayout ? 'hero' : undefined}
+                    >
+                      {heroDeliverables.map(artifact => (
+                        <ArtifactDeliverableCard
+                          key={artifact.id}
+                          artifact={artifact}
+                          layout={useHeroSingleLayout ? 'hero' : 'default'}
+                          isActiveInViewer={Boolean(activeViewerArtifactId && activeViewerArtifactId === artifact.id)}
+                          onOpenArtifactId={onOpenArtifactId}
+                          onCopyText={onCopyText}
+                          onNotify={onNotify}
+                          onOpenAccountSettings={onOpenAccountSettings}
+                          onOpenInDesignStudio={onOpenInDesignStudio}
+                          onOpenInMotionStudio={onOpenInMotionStudio}
+                          onOpenInAssets={onOpenInAssets}
+                          onOpenInBrandKit={onOpenInBrandKit}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {supportingAssets.length > 0 && (
+                    <div className="om-sa-supporting-assets" role="region" aria-label={t('Supporting assets ({count})', { count: supportingAssets.length })}>
+                      <div className="om-sa-supporting-head">
+                        <span>{t('Supporting assets ({count})', { count: supportingAssets.length })}</span>
+                      </div>
+                      <div className="om-sa-supporting-list">
+                        {supportingAssets.map(asset => (
+                          <SupportingAssetRow
+                            key={asset.id}
+                            artifact={asset}
+                            onOpenArtifactId={onOpenArtifactId}
+                            onNotify={onNotify}
+                            onOpenInAssets={onOpenInAssets}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              ) : null;
+
               return (
                 <>
                   {turn.assistantItems.map(msg => {
@@ -1606,33 +2102,16 @@ export function ExecutionTimeline({
                     </div>
                   )}
 
-                  {!isActiveTurn && turn.changedFiles.length > 0 && (
-                    <FilesChangedCard
-                      files={turn.changedFiles}
-                      projectDir={chat.projectDir}
-                      defaultExpanded={!isConsumerCreativeTurn}
-                      onCopyText={onCopyText}
-                      onOpenFile={onOpenChangedFile}
-                    />
-                  )}
-
-                  {deliverableArtifacts.length > 0 && (
-                    <div className="om-sa-deliverables" data-count={deliverableArtifacts.length === 1 ? 'single' : 'multi'}>
-                      {deliverableArtifacts.map(artifact => (
-                        <ArtifactDeliverableCard
-                          key={artifact.id}
-                          artifact={artifact}
-                          onOpenArtifactId={onOpenArtifactId}
-                          onCopyText={onCopyText}
-                          onNotify={onNotify}
-                          onOpenAccountSettings={onOpenAccountSettings}
-                          onOpenInDesignStudio={onOpenInDesignStudio}
-                          onOpenInMotionStudio={onOpenInMotionStudio}
-                          onOpenInAssets={onOpenInAssets}
-                          onOpenInBrandKit={onOpenInBrandKit}
-                        />
-                      ))}
-                    </div>
+                  {isConsumerCreativeTurn ? (
+                    <>
+                      {deliverablesSection}
+                      {filesChangedSection}
+                    </>
+                  ) : (
+                    <>
+                      {filesChangedSection}
+                      {deliverablesSection}
+                    </>
                   )}
 
                   {!isActiveTurn && turn.assistantItems.length > 0 && (() => {
@@ -1648,7 +2127,7 @@ export function ExecutionTimeline({
                         >
                           {[
                             engineLabel || chat.engine,
-                            turn.workItems.length > 0 ? t('{count} steps', { count: turn.workItems.length }) : '',
+                            !isConsumerCreativeTurn && turn.workItems.length > 0 ? t('{count} steps', { count: turn.workItems.length }) : '',
                             turn.durationMs !== undefined ? formatElapsedDuration(turn.durationMs) : '',
                             showInlineTokens ? tokenDetail : '',
                           ].filter(Boolean).join(' · ')}
@@ -1682,7 +2161,6 @@ export function ExecutionTimeline({
                 chat={chat}
                 sending={sending}
                 engineLabel={engineLabel}
-                stepStats={{ total: 0, done: 0 }}
               />
             )
             : null

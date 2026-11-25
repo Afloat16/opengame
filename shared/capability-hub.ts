@@ -422,7 +422,7 @@ export function buildResourceMcpPrompt(
     case 'game-project':
       return [
         `Use OpenMotion MCP tools to inspect or extend Game Studio project "${ref.title}" (${ref.id}).`,
-        `1. Read openmotion://workflow/game/start, inspect files with openmotion_game_get(id="${ref.id}"), and read code via openmotion_game_read_file.`,
+        `1. Read openmotion://workflow/game/start, inspect files with openmotion_game_get(id="${ref.id}"), and read code via openmotion_game_read_file(id="${ref.id}", path=...).`,
         `2. Optionally generate sprites, backgrounds, or sound via openmotion_assets_use(action="generate") and reference them with /motion-api/assets/<assetId>/versions/<versionId>/media.`,
         `3. Write updates via openmotion_game_write_files(id="${ref.id}"), validate via openmotion_game_validate(id="${ref.id}"), and present the playable game via openmotion_present_artifact(kind="game-project", projectId="${ref.id}").`,
         customPrompt ? `Brief: ${customPrompt}` : null,

@@ -676,7 +676,7 @@ export async function hydrateLegacyTurnChangedFiles(
   storeDir: string,
   chat: SuperAgentChat,
 ): Promise<Record<string, SuperAgentFileOperation[]> | undefined> {
-  if (chat.turnChangedFiles && Object.keys(chat.turnChangedFiles).length > 0) {
+  if (chat.turnChangedFiles !== undefined) {
     return chat.turnChangedFiles;
   }
   if (!chat.messages.length) return undefined;

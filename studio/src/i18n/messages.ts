@@ -104,6 +104,8 @@ const singular: Record<string, string> = {
   '{description} ({count} effects)': '{description} ({count} effect)', '{count} files': '{count} file',
   '{count} tools': '{count} tool', '{count} elements selected': '{count} element selected',
   '{count} active effects': '{count} active effect', '{count} tracks': '{count} track',
+  '{count} capabilities': '{count} capability', '{count} resources': '{count} resource',
+  '{count} checks': '{count} check',
 };
 const pluralRules = Object.fromEntries(languages.map(({ locale }) => [locale, new Intl.PluralRules(locale)]));
 
