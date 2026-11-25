@@ -407,7 +407,10 @@ test('manual CI passes the selected template environment to both package formats
       } });
       const commands = (await readFile(calls, 'utf8')).trim().split('\n');
       assert.deepEqual(commands, ['scripts/test-package.mjs version 42 1', ...(format === 'npm'
-        ? [`scripts/package-npm.mjs dist/0.6.4-test.42.1 0.6.4-test.42.1 --template-env=${environment}`]
+        ? [
+          `scripts/package-npm.mjs dist/0.6.4-test.42.1 0.6.4-test.42.1 --template-env=${environment}`,
+          'tests/packaged-game-download.mjs dist/0.6.4-test.42.1/openmotion-app-0.6.4-test.42.1.tgz',
+        ]
         : ['mac-arm64', 'win-x64'].flatMap(target => [
           `scripts/test-package.mjs prepare ${target}`,
           `scripts/test-package.mjs build ${target} 0.6.4-test.42.1 --template-env=${environment}`,

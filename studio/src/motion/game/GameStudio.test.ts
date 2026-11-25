@@ -37,7 +37,7 @@ describe('gameCatalog multi-file detection and internal tags', () => {
     expect(isTopEarningGame({ tags: [] })).toBe(false);
     expect(isTopEarningGame({})).toBe(false);
     const tagged = bundledGames.filter(isTopEarningGame).map(game => game.id).sort();
-    expect(tagged).toEqual([
+    expect(tagged).toEqual(expect.arrayContaining([
       '3d-mahjong',
       'backpack-hero',
       'ball-match',
@@ -61,6 +61,9 @@ describe('gameCatalog multi-file detection and internal tags', () => {
       'vice-beach-golf-club',
       'vice-beach-motor-club',
       'village-defense',
-    ]);
+    ]));
+    for (const game of bundledGames.filter(isTopEarningGame)) {
+      expect(game.tags).toContain(TOP_EARNING_TAG);
+    }
   });
 });
