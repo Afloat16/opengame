@@ -74,6 +74,7 @@ import { notifyAgentsChanged } from '../motion/useLocalAgents';
 import { WorkspaceBack } from '../motion/WorkspaceBack';
 import { AgentModelPicker } from './AgentModelPicker';
 import { compactDirLabel, isInternalManagedStorageDir } from './ChangedFilesTree';
+import type { AccountHandoffResume } from './useAccountHandoff';
 import { ApprovalCard, ExecutionTimeline } from './ExecutionTimeline';
 import {
   ResourceThumbImage,
@@ -304,6 +305,8 @@ export function ConversationStream({
   onRunCommand,
   onOpenAccountSettings,
   onTriggerActionCard,
+  onResumeAfterAccount,
+  onOpenActionCardSettings,
   onOpenInDesignStudio,
   onOpenInMotionStudio,
   onOpenInAssets,
@@ -396,6 +399,8 @@ export function ConversationStream({
   onRunCommand?: (command: ComposerCommandId) => void;
   onOpenAccountSettings?: () => void;
   onTriggerActionCard?: (card: SuperAgentActionCard) => void;
+  onResumeAfterAccount?: AccountHandoffResume;
+  onOpenActionCardSettings?: (card: SuperAgentActionCard, target: 'account' | 'api_key') => void;
   onOpenInDesignStudio?: (projectId: string) => void;
   onOpenInMotionStudio?: (projectId: string) => void;
   onOpenInAssets?: (assetId: string, versionId?: string) => void;
@@ -1892,6 +1897,8 @@ export function ConversationStream({
             onNotify={onNotify}
             onOpenAccountSettings={onOpenAccountSettings}
             onTriggerActionCard={onTriggerActionCard}
+            onResumeAfterAccount={onResumeAfterAccount}
+            onOpenActionCardSettings={onOpenActionCardSettings}
             onOpenInDesignStudio={onOpenInDesignStudio}
             onOpenInMotionStudio={onOpenInMotionStudio}
             onOpenInAssets={onOpenInAssets}

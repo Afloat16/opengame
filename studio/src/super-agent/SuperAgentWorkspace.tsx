@@ -1054,6 +1054,7 @@ export function SuperAgentWorkspace({
     }
   };
 
+  const resumeRequestIds = useRef(new Map<string, string>());
   const handleSend = async (
     text: string,
     meta?: {
@@ -1065,13 +1066,17 @@ export function SuperAgentWorkspace({
       overrideAttachments?: SuperAgentResourceAttachment[];
       initialArtifact?: Partial<SuperAgentArtifact>;
       followUpBehavior?: SuperAgentFollowUpMode;
+      /** Reuse a caller-owned requestId so retries of the same logical send are deduplicated by the gateway. */
+      requestId?: string;
+      /** Leave the composer's draft attachments untouched (system-initiated sends such as account resume). */
+      keepDraftAttachments?: boolean;
     },
   ): Promise<boolean> => {
     setSending(true);
     try {
-      const requestId = typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
+      const requestId = meta?.requestId ?? (typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function'
         ? crypto.randomUUID()
-        : `sa-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
+        : `sa-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`);
       const outgoingAttachments = meta?.overrideAttachments ?? attachments;
       const turnPayload = {
         requestId,
@@ -1093,7 +1098,7 @@ export function SuperAgentWorkspace({
         if (effectiveBehavior === 'queue') {
           const result = await enqueueSuperAgentMessage(activeChat.id, turnPayload);
           applyChatSnapshot(result.conversation, false);
-          setAttachments([]);
+          if (!meta?.keepDraftAttachments) setAttachments([]);
           showToast(t('Queued for next turn'), 'info', 'feedback');
           return true;
         }
@@ -1102,7 +1107,7 @@ export function SuperAgentWorkspace({
           followUpBehavior: 'steer',
         });
         applyChatSnapshot(result.conversation, false);
-        setAttachments([]);
+        if (!meta?.keepDraftAttachments) setAttachments([]);
         return true;
       }
       const targetIntent = modeChatIntent(meta?.mode);
@@ -1116,7 +1121,7 @@ export function SuperAgentWorkspace({
       );
       const result = await startSuperAgentTurn(target.id, turnPayload);
       applyChatSnapshot(result.conversation, false);
-      setAttachments([]);
+      if (!meta?.keepDraftAttachments) setAttachments([]);
       return true;
     } catch (error) {
       showToast(error instanceof Error ? error.message : t('Could not start Super Agent'));
@@ -1546,7 +1551,37 @@ export function SuperAgentWorkspace({
     }
   }, [handlePlayGame]);
 
+  const handleResumeAfterAccount = async (_card: SuperAgentActionCard, { plan, key }: { plan?: string; key: string }) => {
+    // One stable requestId per card instance: a retry after a lost response replays instead of enqueueing twice.
+    let requestId = resumeRequestIds.current.get(key);
+    if (!requestId) {
+      requestId = `sa-resume-${typeof crypto !== 'undefined' && typeof crypto.randomUUID === 'function' ? crypto.randomUUID() : Date.now().toString(36)}`;
+      resumeRequestIds.current.set(key, requestId);
+    }
+    const continued = await handleSend(t('Signed in — please continue.'), {
+      requestId,
+      hiddenInstructions: 'The user just signed in to OpenDesign' + (plan ? ` (plan: ${plan})` : '')
+        + '. Retry the media generation that was blocked by sign-in or plan in the previous turn, with the same brief and settings. Before any paid generation, still state the expected cost as the existing rules require; do not ask the user to reply again.',
+      followUpBehavior: 'queue',
+      overrideAttachments: [],
+      keepDraftAttachments: true,
+    });
+    if (!continued) throw new Error(t('Could not continue the conversation. Try again.'));
+  };
+
+  const handleOpenActionCardSettings = (card: SuperAgentActionCard, target: 'account' | 'api_key') => {
+    if (target === 'api_key') {
+      // The account detail has no key form; open the provider list where a media provider key can be added.
+      if (onOpenProviderSettings) onOpenProviderSettings(undefined, card.entry);
+      else onOpenModelSettings?.();
+      return;
+    }
+    if (onOpenProviderSettings) onOpenProviderSettings('account', card.entry);
+    else onOpenAccountSettings?.();
+  };
+
   const handleTriggerActionCard = useCallback(async (card: SuperAgentActionCard) => {
+    if (card.kind === 'sign_in' || card.kind === 'upgrade_free' || card.kind === 'upgrade_go') return;
     const originChatId = activeChat?.id ?? null;
     if (card.kind === 'web_publish_sign_in') {
       if (card.targetKind === 'game' && card.targetId) {
@@ -2244,6 +2279,8 @@ export function SuperAgentWorkspace({
             onRunCommand={handleComposerCommand}
             onOpenAccountSettings={onOpenAccountSettings}
             onTriggerActionCard={card => void handleTriggerActionCard(card)}
+            onResumeAfterAccount={handleResumeAfterAccount}
+            onOpenActionCardSettings={handleOpenActionCardSettings}
             onOpenInDesignStudio={onOpenDesignProject}
             onOpenInMotionStudio={onOpenMotionProject}
             onOpenInAssets={onOpenAsset}

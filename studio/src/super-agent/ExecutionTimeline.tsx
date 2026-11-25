@@ -23,6 +23,8 @@ import { WorkingIndicator } from '../motion/AssetCreationVisuals';
 import { BLACK_FRIDAY_CAMPAIGN, campaignPricingUrl, newCampaignEntryId, useBlackFridayActive } from '../motion/campaignAttribution';
 import { useCheckoutReturnRefresh } from '../motion/entitlementAttribution';
 import { readDirectGameBrief } from '../motion/game/gameSuperAgent';
+import { AccountHandoffCard } from './AccountHandoffCard';
+import type { AccountHandoffResume } from './useAccountHandoff';
 import { openBalanceGate } from '../motion/monetization/monetizationGateBus';
 import { reportEntitlementGateClick, reportEntitlementGateView } from '../motion/pageTracking';
 import { ArtifactDeliverableCard } from './ArtifactDeliverableCard';
@@ -1423,6 +1425,8 @@ export function ExecutionTimeline({
   onNotify,
   onOpenAccountSettings,
   onTriggerActionCard,
+  onResumeAfterAccount,
+  onOpenActionCardSettings,
   onOpenInDesignStudio,
   onOpenInMotionStudio,
   onOpenInAssets,
@@ -1446,6 +1450,8 @@ export function ExecutionTimeline({
   onNotify?: (message: string, tone?: 'info' | 'error') => void;
   onOpenAccountSettings?: () => void;
   onTriggerActionCard?: (card: SuperAgentActionCard) => void;
+  onResumeAfterAccount?: AccountHandoffResume;
+  onOpenActionCardSettings?: (card: SuperAgentActionCard, target: 'account' | 'api_key') => void;
   onOpenInDesignStudio?: (projectId: string) => void;
   onOpenInMotionStudio?: (projectId: string) => void;
   onOpenInAssets?: (assetId: string, versionId?: string) => void;
@@ -1591,7 +1597,10 @@ export function ExecutionTimeline({
                         <TurnActionCard
                           key={card.id}
                           card={card}
+                          handoffKey={`${chat.id}:${turn.id}:${card.id}`}
                           onTrigger={onTriggerActionCard}
+                          onResume={onResumeAfterAccount}
+                          onOpenSettings={onOpenActionCardSettings}
                         />
                       ))}
                     </div>
@@ -1751,27 +1760,6 @@ function actionCardMeta(kind: SuperAgentActionCard['kind']): {
   cta: string;
 } {
   switch (kind) {
-    case 'sign_in':
-      return {
-        icon: 'account-circle-line',
-        title: 'Sign in with OpenDesign',
-        description: 'Sign in to generate AI art, music, and voice assets, then reply here to continue.',
-        cta: 'Sign in',
-      };
-    case 'upgrade_free':
-      return {
-        icon: 'sparkling-line',
-        title: 'Upgrade to OpenDesign Plus',
-        description: 'Free plan does not include AI media generation. Upgrade to Plus or add your own API key, then reply to continue.',
-        cta: 'Upgrade to Plus',
-      };
-    case 'upgrade_go':
-      return {
-        icon: 'sparkling-line',
-        title: 'Upgrade to OpenDesign Plus',
-        description: 'Go plan does not include AI media generation. Upgrade to Plus or add your own API key, then reply to continue.',
-        cta: 'Upgrade to Plus',
-      };
     case 'top_up':
       return {
         icon: 'error-warning-line',
@@ -1809,6 +1797,25 @@ function actionCardHookId(kind: SuperAgentActionCard['kind']) {
 }
 
 function TurnActionCard({
+  card,
+  handoffKey,
+  onTrigger,
+  onResume,
+  onOpenSettings,
+}: {
+  card: SuperAgentActionCard;
+  handoffKey?: string;
+  onTrigger?: (card: SuperAgentActionCard) => void;
+  onResume?: AccountHandoffResume;
+  onOpenSettings?: (card: SuperAgentActionCard, target: 'account' | 'api_key') => void;
+}) {
+  if (card.kind === 'sign_in' || card.kind === 'upgrade_free' || card.kind === 'upgrade_go') {
+    return <AccountHandoffCard card={card} handoffKey={handoffKey} onResume={onResume} onOpenSettings={onOpenSettings} />;
+  }
+  return <GateActionCard card={card} onTrigger={onTrigger} />;
+}
+
+function GateActionCard({
   card,
   onTrigger,
 }: {
