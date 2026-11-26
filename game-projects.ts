@@ -24,7 +24,7 @@ import { HostedGameTemplates } from './shared/hosted-game-templates.ts';
 import { lfsPointer } from './shared/repository-template-catalog.ts';
 import { zip } from './scripts/zip.mjs';
 import { escapeHtml } from './shared/scenario-content.ts';
-import { formatGameBriefPrompt, gameAssetInstructions, gameGenreLabels, gameGenres, gameStyles, gameSettings, isReadyBuiltInTemplate, type GameBrief, type GameCard, type GameCatalog, type GameCatalogIssue, type GameCreated, type GameHandoff, type GameRemixOptions, type RoomServerMessage, type GameTrailer, type GameTrailerStatus } from './shared/game-contract.ts';
+import { formatGameBriefPrompt, gameAssetInstructions, gameGenreLabels, gameGenres, gameStyles, gameSettings, isReadyBuiltInTemplate, type GameBrief, type GameCard, type GameCatalog, type GameCatalogIssue, type GameCreated, type GameHandoff, type GameRemixOptions, type GameStyle, type RoomServerMessage, type GameTrailer, type GameTrailerStatus } from './shared/game-contract.ts';
 
 const templatesRoot = fileURLToPath(new URL('./templates/games/', import.meta.url));
 const kitsRoot = fileURLToPath(new URL('./templates/game-kits/', import.meta.url));
@@ -261,6 +261,13 @@ async function inventory(root: string, prefix = ''): Promise<{ path: string; byt
   }
   return result.sort((a, b) => a.path.localeCompare(b.path));
 }
+const NEGATED_3D_PROMPT_RE = /(?:(?:非|不要|不用|别用|别做|不做|无需)\s*(?:用|使用|做|采用)?\s*(?:(?:3d|three\.?js|webgl)(?![A-Za-z0-9])|三维)|(?<![A-Za-z0-9])(?:(?:not|no|without|avoid|skip|don['’]t\s+use|do\s+not\s+use)\s+|non-?\s*)(?:3d|three\.?js|webgl)(?![A-Za-z0-9]))/i;
+const POSITIVE_3D_PROMPT_RE = /(?<![A-Za-z0-9])(?:3d|three\.?js|webgl)(?![A-Za-z0-9])|三维/i;
+
+function inferStyleFromPrompt(prompt: string): GameStyle | null {
+  if (NEGATED_3D_PROMPT_RE.test(prompt)) return null;
+  return POSITIVE_3D_PROMPT_RE.test(prompt) ? '3d' : null;
+}
 function briefInput(raw: any): GameBrief {
   if (!raw || typeof raw.prompt !== 'string' || !raw.prompt.trim() || raw.prompt.length > 20000) throw new GameError('prompt is required and must be at most 20000 characters');
   if (typeof raw.multiplayer !== 'boolean') throw new GameError('Invalid multiplayer value');
@@ -271,7 +278,9 @@ function briefInput(raw: any): GameBrief {
   if (raw.playableAd != null && typeof raw.playableAd !== 'boolean') throw new GameError('Invalid playableAd');
   // A playable ad is a single-player portrait build; the flag is ignored for landscape or multiplayer briefs.
   const playableAd = raw.playableAd === true && raw.orientation === 'portrait' && !raw.multiplayer;
-  return { playableAd, prompt: raw.prompt.trim(), multiplayer: raw.multiplayer, genre: raw.genre ?? null, style: raw.style ?? null, setting: raw.setting ?? null, orientation: raw.orientation ?? 'landscape' };
+  const prompt = raw.prompt.trim();
+  const style: GameStyle | null = raw.style ?? inferStyleFromPrompt(prompt);
+  return { playableAd, prompt, multiplayer: raw.multiplayer, genre: raw.genre ?? null, style, setting: raw.setting ?? null, orientation: raw.orientation ?? 'landscape' };
 }
 function remixOverridesInput(raw: any): GameRemixOptions {
   if (raw == null) return {};
