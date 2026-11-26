@@ -1,0 +1,30 @@
+{
+  "id": "village-guard-td",
+  "title": "Village Guard TD",
+  "description": "Rally brave villagers and construct clever wooden watchtowers to fend off raiders—upgrade barricades and protect your peaceful frontier settlement.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "medieval",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap tower pads to build and upgrade defenses, and deploy reinforcements whenever enemies push forward.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "村庄守卫战",
+      "description": "清新卡通策略塔防村庄守卫战：修建箭塔与路障、集结勇者卫队击退强盗怪潮，守卫家园步步升级防线！",
+      "controls": "点击空地修建与升级防御塔，合理调配资源击退一波波来犯之敌保卫村庄。"
+    }
+  }
+}

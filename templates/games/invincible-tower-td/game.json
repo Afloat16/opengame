@@ -1,0 +1,30 @@
+{
+  "id": "invincible-tower-td",
+  "title": "Invincible Tower TD",
+  "description": "Command an unstoppable line of elemental towers across tactical chokepoints—chain slow fields with AoE blasts to obliterate massive enemy rushes.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap map nodes to build and upgrade towers, manage gold wisely, and unleash hero skills on tough waves.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "塔防无敌",
+      "description": "爽快割草感策略塔防无敌：合理搭配冰冻减速与范围爆破炮塔，卡准路口火力交叉覆盖，怪潮寸步难行！",
+      "controls": "点击路径旁据点建造升级各类炮塔，合理分配金币并释放技能全歼敌军。"
+    }
+  }
+}

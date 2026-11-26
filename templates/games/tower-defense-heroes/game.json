@@ -1,0 +1,30 @@
+{
+  "id": "tower-defense-heroes",
+  "title": "Tower Defense Heroes",
+  "description": "Deploy heroic archers, mages, and knights along scenic fantasy trails—upgrade skill trees mid-battle and defend the kingdom gates.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Place hero units on strategic spots along the path and tap upgrades as enemy waves intensify.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "塔防英雄",
+      "description": "奇幻冒险策略塔防英雄：招募弓箭手、大法师与重甲骑士据守要道，升级英雄技能击退魔物大军保卫王国！",
+      "controls": "在道路两侧战略点部署并升级各职业塔防英雄，抵御魔物入侵守卫城堡。"
+    }
+  }
+}

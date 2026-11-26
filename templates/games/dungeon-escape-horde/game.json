@@ -1,0 +1,30 @@
+{
+  "id": "dungeon-escape-horde",
+  "title": "Dungeon Escape Horde",
+  "description": "Battle through dark crypts swarming with skeletons and slimes—stack roguelike skill combos, evolve devastating weapons, and fight your way out of the dungeon.",
+  "genre": "shooter",
+  "style": "pixel",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag to dodge monster packs while auto-firing spells and selecting roguelike skill upgrades on level-up.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "landscape",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "逃出地下城割草",
+      "description": "暗黑像素肉鸽割草逃出地下城：孤身勇闯怪物狂潮地牢，拾取经验升级叠满超武神技，杀出血路逃出生天！",
+      "controls": "单指拖动控制走位躲避怪群，角色自动释放技能并在升级时三选一强化大招。"
+    }
+  }
+}

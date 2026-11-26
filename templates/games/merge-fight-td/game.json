@@ -1,0 +1,30 @@
+{
+  "id": "merge-fight-td",
+  "title": "Merge & Fight TD",
+  "description": "Combine merge-upgrade economy with punchy wave combat—synthesize elite defenders, unlock synergy buffs, and crush towering siege bosses.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag matching defender units together to level them up and defend your fortress against incoming waves.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "塔防合成与战斗",
+      "description": "策略合成与激爽塔防双融合：边合成升级强力防御单位、边指挥前线抵御 Boss 攻城，节奏紧凑超耐玩！",
+      "controls": "拖拽相同防御单位合成升级，合理站位抵挡每波怪潮与巨型 Boss 进攻。"
+    }
+  }
+}

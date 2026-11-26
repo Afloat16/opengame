@@ -1,0 +1,1 @@
+window._CCSettings={platform:"web-mobile",groupList:["place","turret"],collisionMatrix:[[false,true],[true,false]],hasResourcesBundle:true,hasStartSceneBundle:false,remoteBundles:[],subpackages:[],launchScene:"db:/"+"/assets/Scene/game.fire",orientation:"portrait",jsList:["assets/frontjs/_FrontJSSDKConfig.js","assets/frontjs/frontjs.cocos.min.js"]};

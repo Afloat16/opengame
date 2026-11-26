@@ -1,0 +1,30 @@
+{
+  "id": "base-defense-battle",
+  "title": "Base Defense Battle",
+  "description": "Fortify your command outpost against wave after wave of armored invaders—place turrets, call airstrikes, and upgrade firepower to keep the base standing.",
+  "genre": "shooter",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap build slots to place and upgrade defense turrets, and trigger special support skills during boss waves.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "基地保卫战",
+      "description": "热血策略塔防基地保卫战：部署重机枪炮塔与导弹阵列，灵活升级火力防线，抵御一波波装甲敌军猛烈进攻！",
+      "controls": "点击空位部署并升级防御炮塔，关键时刻释放强力支援技能守住基地防线。"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+{
+  "id": "merge-plants-zombies",
+  "title": "Merge Plants vs Zombies",
+  "description": "Fuse matching pea-shooters, sunflowers, and frost plants into super-powered botanical defenders to blast waves of quirky zombies off your lawn.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "modern",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag two identical plants together to evolve a stronger turret and position them in lanes to stop incoming zombies.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "合成植物大战僵尸",
+      "description": "爆款二合塔防合成植物大战僵尸：拖拽两株相同植物秒变高阶超级射手，满屏豌豆冰瓜轰飞成群呆萌僵尸！",
+      "controls": "拖动两株相同等级的植物合体升级，排兵布阵火力全开消灭所有来袭僵尸。"
+    }
+  }
+}

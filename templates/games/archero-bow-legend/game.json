@@ -1,0 +1,30 @@
+{
+  "id": "archero-bow-legend",
+  "title": "Archero Bow Legend",
+  "description": "Run, stop, and loose rapid-fire arrow volleys across roguelike dungeon rooms—stack ricochet, multishot, and fire arrows to conquer every boss.",
+  "genre": "shooter",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Drag to dodge projectiles and release to stand still and auto-fire arrows at the nearest enemy.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "landscape",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "弓箭手传说",
+      "description": "现象级动作肉鸽鼻祖弓箭手传说：移动走位躲弹幕、停步自动连射箭雨，叠加弹射多重箭一路通关打爆 Boss！",
+      "controls": "拖动摇杆走位躲避怪物攻击，松手停步即可自动向最近敌人射出箭雨，升级叠加神技。"
+    }
+  }
+}

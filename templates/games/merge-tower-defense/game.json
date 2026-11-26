@@ -1,0 +1,30 @@
+{
+  "id": "merge-tower-defense",
+  "title": "Merge Tower Defense",
+  "description": "Summon elemental turrets and merge matching tiers right on the winding battlefield to melt escalating enemy waves with laser, frost, and cannon fire.",
+  "genre": "casual",
+  "style": "anime",
+  "setting": "fantasy",
+  "multiplayer": false,
+  "maxPlayers": 1,
+  "status": "published",
+  "cover": "cover.webp",
+  "entry": "index.html",
+  "controls": "Tap to buy new turrets and drag identical levels together to merge stronger towers along the enemy path.",
+  "plays": 0,
+  "likes": 0,
+  "dislikes": 0,
+  "createdAt": "2026-11-25T00:00:00.000Z",
+  "updatedAt": "2026-11-25T00:00:00.000Z",
+  "orientation": "portrait",
+  "tags": [
+    "TOP赚钱"
+  ],
+  "i18n": {
+    "zh-CN": {
+      "title": "合成塔防大师",
+      "description": "魔性上头放置策略合成塔防大师：召唤炮塔两两合成秒升神装，激光寒冰重炮齐发守住蜿蜒防线！",
+      "controls": "点击购买防御塔并将两座同级炮塔拖到一起合成升级，消灭沿路进攻的怪物。"
+    }
+  }
+}
