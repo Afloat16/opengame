@@ -23,14 +23,25 @@ const actionSets = {
 } as const;
 const targets = ['project', 'templates', 'providers'] as const;
 export const capabilityExecutorKinds = ['model', 'prompt-preset', 'dedicated-model', 'service', 'script'] as const;
-export const mediaModalities = ['image', 'video', 'audio'] as const;
+export const mediaModalities = ['image', 'video', 'audio', '3d'] as const;
+export type MediaTelemetryModality = typeof mediaModalities[number];
+export const mediaGenerationExecutorKinds = ['gateway', 'script'] as const;
+export type MediaGenerationExecutorKind = typeof mediaGenerationExecutorKinds[number];
+export const mediaGenerationSpatialKinds = ['asset', 'world'] as const;
+export type MediaGenerationSpatialKind = typeof mediaGenerationSpatialKinds[number];
+export const mediaGenerationPipelineSteps = ['base', 'rig', 'retarget', 'postprocess', 'world'] as const;
+export type MediaGenerationPipelineStep = typeof mediaGenerationPipelineSteps[number];
 export const mediaGenerationRouteChannels = ['amr_account', 'amr_opendesign', 'byok_builtin', 'byok_agent', 'byok_custom'] as const;
 export type MediaGenerationRouteChannel = typeof mediaGenerationRouteChannels[number];
 export const mediaGenerationEntrySurfaces = ['studio', 'mcp_media_use', 'mcp_assets_use', 'mcp_capability_run', 'scenario', 'unknown'] as const;
 export type MediaGenerationEntrySurface = typeof mediaGenerationEntrySurfaces[number];
 export const mediaGenerationDestinations = ['library', 'project'] as const;
 export type MediaGenerationDestination = typeof mediaGenerationDestinations[number];
-export const mediaGenerationModes = ['text-to-image', 'text-to-video', 'text-to-audio', 'text-to-speech'] as const;
+export const mediaGenerationModes = [
+  'text-to-image', 'text-to-video', 'text-to-audio', 'text-to-speech',
+  'text-to-3d', 'image-to-3d', 'rig-3d', 'retarget-3d', 'edit-3d',
+  'text-to-world', 'image-to-world', 'edit-world',
+] as const;
 export type MediaGenerationMode = typeof mediaGenerationModes[number];
 export const mediaGenerationAudioKinds = ['speech', 'music', 'sfx', 'other'] as const;
 export type MediaGenerationAudioKind = typeof mediaGenerationAudioKinds[number];
@@ -38,16 +49,20 @@ export const mediaGenerationAccountPlans = ['free', 'go', 'plus', 'pro', 'team',
 export type MediaGenerationAccountPlan = typeof mediaGenerationAccountPlans[number];
 export const mediaGenerationRejectionCategories = [
   'commercial_gate', 'auth_credential', 'client_validation', 'provider_unavailable',
-  'reference_invalid', 'project_missing', 'config_changed', 'queue_full', 'other',
+  'runtime_unavailable', 'reference_invalid', 'project_missing', 'config_changed',
+  'queue_full', 'local_storage', 'other',
 ] as const;
 export type MediaGenerationRejectionCategory = typeof mediaGenerationRejectionCategories[number];
 export const mediaGenerationRejectionReasons = [
   'INVALID_PROMPT', 'INVALID_PARAMETERS', 'INVALID_MODE', 'INVALID_DESTINATION', 'INVALID_USAGE',
   'INVALID_IDEMPOTENCY_KEY', 'IDEMPOTENCY_CONFLICT', 'PROJECT_NOT_FOUND', 'PROJECT_NOT_OPEN',
+  'STUDIO_NOT_OPEN', 'NATIVE_RUNTIME_MISSING',
+  'CAPABILITY_NOT_FOUND', 'CAPABILITY_COMING_SOON', 'CAPABILITY_DEPRECATED', 'CAPABILITY_CHANNEL_DISABLED',
+  'CAPABILITY_UNAVAILABLE', 'CAPABILITY_MODEL_INCOMPATIBLE',
   'ACCOUNT_SIGNED_OUT', 'ACCOUNT_NOT_ENTITLED', 'KEY_REJECTED', 'PROVIDER_NOT_CONFIGURED', 'MODEL_UNAVAILABLE',
   'CONFIG_CHANGED', 'OPTIONS_INVALID', 'REFERENCE_UNSUPPORTED', 'REFERENCE_LIMIT_EXCEEDED',
   'REFERENCE_TOO_LARGE', 'REFERENCE_INVALID_FORMAT', 'REFERENCE_UNREADABLE', 'REFERENCE_CONFLICT',
-  'LIBRARY_INVALID', 'QUEUE_FULL', 'PREFLIGHT_FAILED',
+  'LIBRARY_INVALID', 'QUEUE_FULL', 'NOT_RESUMABLE', 'SAVE_UNAVAILABLE', 'PREFLIGHT_FAILED',
 ] as const;
 export type MediaGenerationRejectionReason = typeof mediaGenerationRejectionReasons[number];
 export const mediaGenerationFailurePhases = [
@@ -304,26 +319,44 @@ export function mediaGenerationError(error: unknown, phase?: string): MediaGener
   if (lower.startsWith('save_not_available:')) return 'SAVE_UNAVAILABLE';
   // Timeouts (local deadline or remote timeout) take precedence over generic phase buckets.
   if (upstreamCode === 'timeout' || lower.includes('timed out') || lower.includes('timeout')) return 'TIMEOUT';
-  if (phase === 'uploading' && (source === 'storage' || lower.includes('reference upload storage'))) return 'UPLOAD_FAILED';
+  if (phase === 'uploading' && (source === 'storage' || lower.includes('reference upload storage') || lower.includes('reference image put failed'))) return 'UPLOAD_FAILED';
   if (phase === 'downloading' || source === 'download') {
     if (status === 401 && upstreamCode === 'unauthorized') return 'AUTH_REJECTED';
     return 'DOWNLOAD_FAILED';
   }
   if (phase === 'save_failed' || phase === 'saving') return 'SAVE_FAILED';
   if (phase === 'decoding') {
-    if (lower.includes('returned no media') || lower.includes('returned no images') || lower.includes('without media output')) return 'EMPTY_OUTPUT';
+    if (lower.includes('returned no media') || lower.includes('returned no images') || lower.includes('without media output') || lower.includes('without a downloadable')) return 'EMPTY_OUTPUT';
     return 'INVALID_MEDIA';
   }
   if (upstreamCode === 'insufficient_balance' || status === 402) return 'BALANCE_LOW';
   if (upstreamCode === 'tier_model_not_entitled' || upstreamCode === 'tier_request_kind_not_entitled' || upstreamCode === 'model_access_denied') return 'PLAN_NOT_ENTITLED';
   if (upstreamCode === 'tier_limit_exceeded' || upstreamCode === 'rate_limit_exceeded' || status === 429) return 'RATE_LIMITED';
-  if (upstreamCode === 'unauthorized' || status === 401 || status === 403) return 'AUTH_REJECTED';
+  if (upstreamCode === 'unauthorized' || status === 401) return 'AUTH_REJECTED';
   if (upstreamCode === 'invalid_request' || upstreamCode === 'asset_too_large' || upstreamCode === 'unsupported_media_type' || status === 400 || status === 413 || status === 422) return 'INVALID_REQUEST';
   if (status !== undefined && status >= 500 && status <= 599) return 'UPSTREAM_5XX';
   if (phase === 'remote_task') return 'REMOTE_FAILED';
   if (lower.includes('plan does not include') || lower.includes('upgrade your plan')) return 'PLAN_NOT_ENTITLED';
   if (lower.includes('balance') || lower.includes('credit') || lower.includes('insufficient') || lower.includes('quota') || lower.includes('entitlement')) return 'BALANCE_LOW';
-  if (lower.includes('401') || lower.includes('403') || lower.includes('unauthorized') || lower.includes('forbidden') || lower.includes('api key') || lower.includes('credentials') || lower.includes('personal engine key') || lower.includes('sign-in is no longer accepted') || lower.includes('sign-in was rejected')) return 'AUTH_REJECTED';
+  const decisiveNonAuthCode = upstreamCode === 'content_policy_violation'
+    || upstreamCode === 'safety_blocked'
+    || upstreamCode === 'cancelled';
+  const genericApi403Message = status === 403 && lower === 'provider http 403: credentials or permissions rejected';
+  const allowGeneric403Auth = !upstreamCode || upstreamCode === 'provider_error' || upstreamCode === 'internal_error' || upstreamCode === 'service_unavailable' || upstreamCode === 'request_state_unknown';
+  if (
+    !decisiveNonAuthCode
+    && (
+      lower.includes('401')
+      || lower.includes('unauthorized')
+      || lower.includes('api key')
+      || lower.includes('personal engine key')
+      || lower.includes('sign-in is no longer accepted')
+      || lower.includes('sign-in was rejected')
+      || (genericApi403Message
+        ? allowGeneric403Auth
+        : ((!upstreamCode && lower.includes('403')) || lower.includes('forbidden') || lower.includes('credentials')))
+    )
+  ) return 'AUTH_REJECTED';
   if (lower.includes('429') || lower.includes('rate limit') || lower.includes('concurrency limit')) return 'RATE_LIMITED';
   if (lower.includes('configuration changed') || lower.includes('origin changed') || lower.includes('account changed')) return 'CONFIG_CHANGED';
   if (lower.includes('no longer available') || lower.includes('unavailable')) return 'PROVIDER_UNAVAILABLE';
@@ -333,6 +366,7 @@ export function mediaGenerationError(error: unknown, phase?: string): MediaGener
   if (lower.includes('download')) return 'DOWNLOAD_FAILED';
   if (lower.includes('fetch failed') || lower.includes('econnreset') || lower.includes('enotfound') || lower.includes('econnrefused') || lower.includes('socket hang up') || lower.includes('public dns') || lower.includes('check your connection')) return 'NETWORK_ERROR';
   if (lower.includes('task failed') || lower.includes('remote') || lower.includes('generation failed') || lower.includes('generation cancelled') || lower.includes('generation canceled')) return 'REMOTE_FAILED';
+  if (status === 403 && !upstreamCode) return 'AUTH_REJECTED';
   return 'PROVIDER_ERROR';
 }
 
