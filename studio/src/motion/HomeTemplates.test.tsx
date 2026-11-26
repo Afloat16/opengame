@@ -4,6 +4,7 @@ import { createRoot, type Root } from 'react-dom/client';
 import { afterEach, beforeEach, expect, it, vi } from 'vitest';
 import { I18nProvider, translate, type Locale } from '../i18n/I18n';
 import { HomeTemplates } from './HomeTemplates';
+import { trackMotion } from './tracking';
 import type { IntegrationInfo } from '../../../shared/integration';
 
 const integration: IntegrationInfo = {
@@ -12,6 +13,7 @@ const integration: IntegrationInfo = {
 };
 
 const state = vi.hoisted(() => ({ open: vi.fn(), disabled: false }));
+vi.mock('./tracking', () => ({ trackMotion: vi.fn().mockResolvedValue(undefined) }));
 vi.mock('./WorkspaceFrame', () => ({ useWorkspaceChrome: () => ({ workspace: { open: state.open }, switchingDisabled: state.disabled }) }));
 const builtin = { id: 'product-promo', kind: 'builtin', title: 'Product Promo', author: 'Hyperframes', description: 'Editable', tags: [], collection: 'builtin' };
 const reference = { id: 'hf-moment-M953', kind: 'reference', title: 'Reference', author: 'Creator', description: 'Reference video', tags: [], collection: 'moment' };
@@ -42,7 +44,14 @@ it('only editable templates open a new engineering project; references copy thei
   expect(container.querySelector('.motion-editable-badge')).toBeNull();
   await act(async () => button('一键复制').click());
   expect(clipboard).toHaveBeenCalledOnce();
-  expect(clipboard.mock.calls[0][0]).toBe([
+  const metadata = JSON.parse(clipboard.mock.calls[0][0].split('\n')[1]);
+  expect(metadata).toMatchObject({
+    templateId: 'hf-moment-M953', templateEntry: 'editor', copyAttemptId: expect.any(String),
+  });
+  const attempt = { page_name: 'home', copy_attempt_id: metadata.copyAttemptId };
+  expect(trackMotion).toHaveBeenCalledWith('ui_click', expect.objectContaining({ ...attempt, element: 'copy_template' }));
+  expect(trackMotion).toHaveBeenCalledWith('template_instruction_copy_result', expect.objectContaining({ ...attempt, copy_status: 'clipboard_written' }));
+  expect(clipboard.mock.calls[0][0]).toContain([
     '使用说明：请使用 OpenMotion 插件。如未安装，请按 `https://github.com/nexu-io/openmotion` 安装并接入后继续。',
     '指定模板：Reference（hf-moment-M953）',
     '创作要求：基于模板，结合我的要求和附件创作。保留原模板的场景、界面和动画结构（可编辑模板直接原地替换文字与素材），不另写简陋文字卡页面；需要舍弃内容时先说明取舍，并交付 HTML 和 MP4。',
