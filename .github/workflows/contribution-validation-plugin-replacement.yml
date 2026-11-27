@@ -15,7 +15,7 @@ jobs:
       matrix:
         include:
           - label: plugin-replacement-preserve
-            sha: 'b37384e52759ab222722c6aa28339867715fe88c'
+            sha: '41a32f4acd0a4a6934f30d289e8306627e44c24a'
             package: '@open-design/daemon'
             tests: 'tests/plugins-replacement.test.ts tests/plugins-installer.test.ts tests/plugins-installer-archive.test.ts'
             regression: 'tests/plugins-replacement.test.ts'
