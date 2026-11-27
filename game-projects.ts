@@ -182,6 +182,7 @@ async function inspectLocalModuleGraph(
   entryScripts: string[],
   inlineScripts: string[],
   allowedHosts: string[],
+  gameId: string,
 ): Promise<{ diagnostics: { path: string; message: string }[]; importsLogic: boolean; visitedModules: string[]; moduleSources: Map<string, string>; importsThree: boolean }> {
   const diagnostics: { path: string; message: string }[] = [];
   const visited = new Set<string>();
@@ -189,6 +190,7 @@ async function inspectLocalModuleGraph(
   const queue: string[] = [];
   let importsLogic = false;
   let importsThree = false;
+  const playRoot = `/api/games/${encodeURIComponent(gameId)}/play/`;
 
   const enqueueSpecifier = async (fromPath: string, specifier: string) => {
     const clean = specifier.replace(/[?#].*$/, '');
@@ -202,11 +204,16 @@ async function inspectLocalModuleGraph(
       return;
     }
     if (!clean.startsWith('./') && !clean.startsWith('../')) return;
-    const baseDir = fromPath === 'index.html' ? '' : path.posix.dirname(fromPath);
-    const resolved = path.posix.normalize(baseDir && baseDir !== '.' ? `${baseDir}/${clean}` : clean);
-    if (resolved === 'logic.js') importsLogic = true;
-    if (/^vendor\/(?:three\.module(?:\.min)?|GLTFLoader|SkeletonUtils|HumanoidRigController)\.js$/i.test(resolved)) importsThree = true;
+    let resolved: string | undefined;
     try {
+      // Browser module specifiers are URLs, while fromPath is an already-decoded
+      // file path. Resolve dot segments before decoding, as the play route does.
+      const fromUrl = new URL(playRoot + fromPath.split('/').map(encodeURIComponent).join('/'), 'http://game.local');
+      const url = new URL(specifier, fromUrl);
+      if (!url.pathname.startsWith(playRoot)) throw new GameError('Module URL leaves this game');
+      resolved = url.pathname.slice(playRoot.length).split('/').map(decodeURIComponent).join('/');
+      if (resolved === 'logic.js') importsLogic = true;
+      if (/^vendor\/(?:three\.module(?:\.min)?|GLTFLoader|SkeletonUtils|HumanoidRigController)\.js$/i.test(resolved)) importsThree = true;
       const target = await safeFile(dir, resolved);
       if (!(await lstat(target)).isFile()) {
         diagnostics.push({ path: fromPath, message: `Imported module is not a file: ${specifier}` });
@@ -1311,7 +1318,7 @@ server.listen(port, '127.0.0.1', () => {
     } catch (e) {
       if (relative !== 'client.js' || (e as NodeJS.ErrnoException).code !== 'ENOENT') diagnostics.push({ path: relative, message: (e as Error).message });
     }
-    const moduleGraph = await inspectLocalModuleGraph(dir, entryScripts, inlineScripts, allowedHosts);
+    const moduleGraph = await inspectLocalModuleGraph(dir, entryScripts, inlineScripts, allowedHosts, id);
     diagnostics.push(...moduleGraph.diagnostics);
     if(game.multiplayer){
       let client='';try{client=(await this.read(id,'client.js')).content;}catch{}
