@@ -183,3 +183,19 @@ for (const relation of ['nested', 'overlapping']) {
     assert.ok(allocations.every(length => length <= binary.length), `Repack requested ${Math.max(...allocations)} bytes for a ${binary.length}-byte BIN`);
   });
 }
+
+for (const extension of ['EXT_meshopt_compression', 'KHR_meshopt_compression']) {
+  test(`an invalid ${extension} buffer index keeps the original GLB unchanged`, { skip: process.platform === 'win32' }, async t => {
+    await encoder(t);
+    for (const buffer of [undefined, null, '0', '1', -1, 0.5, 1, Number.MAX_SAFE_INTEGER + 1]) {
+      const { doc, binary } = fixture(extension);
+      doc.bufferViews[0].extensions[extension].buffer = buffer;
+      const original = pack(doc, binary);
+      const result = await optimizeGlbTexturesForPublish(original);
+      assert.equal(result.optimized, false, `buffer=${String(buffer)}`);
+      assert.equal(result.data, original);
+      assert.equal(result.convertedImages, 0);
+      assert.equal(result.savedBytes, 0);
+    }
+  });
+}

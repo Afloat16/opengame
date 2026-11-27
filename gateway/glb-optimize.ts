@@ -154,6 +154,8 @@ export async function optimizeGlbTexturesForPublish(bytes: Buffer): Promise<GlbO
       const ref = doc.bufferViews[index].extensions?.[extension];
       if (!ref) continue;
       compressedViews.add(index);
+      // The extension schema requires a valid buffer index, including buffer 0.
+      if (!Array.isArray(doc.buffers) || !Number.isSafeInteger(ref.buffer) || ref.buffer < 0 || ref.buffer >= doc.buffers.length || !doc.buffers[ref.buffer]) return unchanged;
       if (ref.buffer !== 0) continue;
       const start = ref.byteOffset ?? 0;
       const length = ref.byteLength;
