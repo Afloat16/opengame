@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
+import { randomUUID } from 'node:crypto';
+import { once } from 'node:events';
 import fs, { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
 import test, { type TestContext } from 'node:test';
+import { withProcessLock } from '../shared/process-lock.ts';
 import { applySourceUpdate, readUpdateState, UPDATE_LOCK_FILENAME, type ExecRunner } from '../shared/source-update.ts';
 
 const previous = '1'.repeat(40), target = '2'.repeat(40);
@@ -118,6 +122,43 @@ test('an acquisition timeout records a structured failure without interrupting t
     assert.equal((await first).status, 'updated');
   }
   assert.equal((await app.update('workspace-b')).status, 'up_to_date');
+});
+
+test('a reclaim timeout records contention and preserves the stale owner until retry', { timeout: 10_000 }, async t => {
+  const child = spawn(process.execPath, ['-e', ''], { stdio: 'ignore' });
+  const [code, signal] = await once(child, 'exit');
+  assert.equal(code, 0);
+  assert.equal(signal, null);
+  assert.ok(child.pid);
+  const start = Date.now();
+  t.mock.timers.enable({ apis: ['Date'], now: start });
+  let fetches = 0;
+  const app = await fixture(t, async () => { fetches++; });
+  const reclaim = app.lockPath + '.reclaim';
+  const staleOwner = JSON.stringify({ pid: child.pid, token: randomUUID() });
+  await mkdir(path.dirname(app.lockPath), { recursive: true });
+  await writeFile(app.lockPath, staleOwner);
+  const blocked = Promise.withResolvers<void>();
+  observeContention(t, reclaim, () => blocked.resolve());
+  await withProcessLock(reclaim, async () => {
+    const reclaimOwner = await fs.readFile(reclaim, 'utf8');
+    const pending = app.update('workspace');
+    await blocked.promise;
+    t.mock.timers.setTime(start + 240_001);
+    const result = await pending;
+    assert.equal(result.status, 'failed');
+    assert.equal(result.updated, false);
+    assert.equal(result.reason, 'update_in_progress');
+    const saved = await readUpdateState(app.dataDirectory('workspace'));
+    assert.equal(saved?.lastStatus, 'failed');
+    assert.equal(saved?.lastAttemptAt, start);
+    assert.equal(saved?.lastError, result.error);
+    assert.equal(await fs.readFile(app.lockPath, 'utf8'), staleOwner);
+    assert.equal(await fs.readFile(reclaim, 'utf8'), reclaimOwner);
+    assert.equal(fetches, 0, 'a timed-out reclaimer must not mutate the checkout');
+  });
+  assert.equal((await app.update('workspace')).status, 'updated');
+  assert.equal(fetches, 1);
 });
 
 test('separate checkouts can update at the same time', { timeout: 5000 }, async (t) => {

@@ -7,7 +7,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 import { promisify } from 'node:util';
 import { editorRequest, readEditor, sharedEditorEnabled } from '../editor-runtime.ts';
 import { SOURCE_BUILD_INPUTS, SOURCE_BUILD_OUTPUTS } from '../scripts/source-build-state.mjs';
-import { withProcessLock } from './process-lock.ts';
+import { ProcessLockTimeoutError, withProcessLock } from './process-lock.ts';
 import { packagedSkills } from './workflow.ts';
 
 const execFileAsync = promisify(execFile);
@@ -1426,7 +1426,7 @@ export async function applySourceUpdate(options: SourceUpdateOptions): Promise<S
       restartDeferred,
     };
   }, 240_000).catch(async (error): Promise<SourceUpdateApplyResult> => {
-    if (enteredUpdate || !(error instanceof Error) || error.message !== 'Timed out waiting for OpenMotion lock: ' + lockPath) throw error;
+    if (enteredUpdate || !(error instanceof ProcessLockTimeoutError)) throw error;
     // A cold install/build can outlast the bounded wait. Report contention without
     // touching the active updater's checkout or extending the caller's wait.
     const message = 'Another source update is still running for this checkout; retry after it finishes.';
