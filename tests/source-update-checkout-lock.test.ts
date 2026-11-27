@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import fs, { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { syncBuiltinESMExports } from 'node:module';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { setTimeout as delay } from 'node:timers/promises';
-import test from 'node:test';
-import { applySourceUpdate, type ExecRunner } from '../shared/source-update.ts';
+import test, { type TestContext } from 'node:test';
+import { applySourceUpdate, readUpdateState, UPDATE_LOCK_FILENAME, type ExecRunner } from '../shared/source-update.ts';
 
 const previous = '1'.repeat(40), target = '2'.repeat(40);
 
@@ -40,6 +41,8 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }, fetchHoo
     return { stdout, stderr: '' };
   };
   return {
+    lockPath: path.join(repoRoot, '.artifacts', 'install', UPDATE_LOCK_FILENAME),
+    dataDirectory: (workspace: string) => path.join(root, workspace),
     update: (workspace: string) => applySourceUpdate({
       repoRoot, dataDirectory: path.join(root, workspace), homeDirectory: path.join(root, 'home'),
       exec, restartBackend: false,
@@ -47,25 +50,74 @@ async function fixture(t: { after: (fn: () => Promise<void>) => void }, fetchHoo
   };
 }
 
+function observeContention(t: TestContext, lockPath: string, blocked: () => void) {
+  const link = fs.link;
+  t.mock.method(fs, 'link', async (...args: Parameters<typeof fs.link>) => {
+    try { return await link(...args); }
+    catch (error) {
+      if (String(args[1]) === lockPath && (error as NodeJS.ErrnoException).code === 'EEXIST') blocked();
+      throw error;
+    }
+  });
+  syncBuiltinESMExports();
+  t.after(() => { t.mock.restoreAll(); syncBuiltinESMExports(); });
+}
+
 test('different workspaces serialize updates of the same checkout', { timeout: 5000 }, async (t) => {
   const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const secondProgress = Promise.withResolvers<'blocked' | 'mutating'>();
   let fetches = 0;
   const app = await fixture(t, async () => {
     if (++fetches === 1) { entered.resolve(); await release.promise; }
+    else secondProgress.resolve('mutating');
   });
+  observeContention(t, app.lockPath, () => secondProgress.resolve('blocked'));
   const first = app.update('workspace-a');
   await entered.promise;
   const second = app.update('workspace-b');
-  let completedBeforeRelease: boolean;
+  let progress: 'blocked' | 'mutating';
   try {
-    completedBeforeRelease = await Promise.race([second.then(() => true), delay(200, false)]);
+    progress = await secondProgress.promise;
   } finally {
     release.resolve();
   }
   const [firstResult, secondResult] = await Promise.all([first, second]);
-  assert.equal(completedBeforeRelease, false, 'the second workspace updated while the first held the checkout');
+  assert.equal(progress, 'blocked', 'the second workspace reached mutating Git before joining the checkout lock queue');
   assert.equal(firstResult.status, 'updated');
   assert.equal(secondResult.status, 'up_to_date');
+});
+
+test('an acquisition timeout records a structured failure without interrupting the update owner', { timeout: 5000 }, async t => {
+  const start = Date.now();
+  t.mock.timers.enable({ apis: ['Date'], now: start });
+  const entered = Promise.withResolvers<void>(), release = Promise.withResolvers<void>();
+  const blocked = Promise.withResolvers<void>();
+  let fetches = 0;
+  const app = await fixture(t, async () => {
+    if (++fetches === 1) { entered.resolve(); await release.promise; }
+  });
+  observeContention(t, app.lockPath, () => blocked.resolve());
+  const first = app.update('workspace-a');
+  await entered.promise;
+  try {
+    const second = app.update('workspace-b');
+    await blocked.promise;
+    t.mock.timers.setTime(start + 240_001);
+    const result = await second;
+    assert.equal(result.status, 'failed');
+    assert.equal(result.updated, false);
+    assert.equal(result.reason, 'update_in_progress');
+    assert.match(result.error ?? '', /another source update/i);
+    const saved = await readUpdateState(app.dataDirectory('workspace-b'));
+    assert.equal(saved?.lastStatus, 'failed');
+    assert.equal(saved?.lastAttemptAt, start);
+    assert.equal(saved?.lastError, result.error);
+    assert.equal(fetches, 1, 'a timed-out waiter must not mutate the checkout');
+  } finally {
+    release.resolve();
+    assert.equal((await first).status, 'updated');
+  }
+  assert.equal((await app.update('workspace-b')).status, 'up_to_date');
 });
 
 test('separate checkouts can update at the same time', { timeout: 5000 }, async (t) => {

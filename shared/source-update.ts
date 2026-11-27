@@ -1056,8 +1056,10 @@ export async function applySourceUpdate(options: SourceUpdateOptions): Promise<S
   // Workspaces share this checkout's Git state, dependencies and build outputs.
   // Keep their updates serialized even when each has a different data directory.
   const lockPath = path.join(repoRoot, '.artifacts', 'install', UPDATE_LOCK_FILENAME);
+  let enteredUpdate = false;
 
-  return withProcessLock(lockPath, async () => {
+  return withProcessLock<SourceUpdateApplyResult>(lockPath, async () => {
+    enteredUpdate = true;
     const readDirtyWorktreeFiles = async () => {
       const statusResult = await runGit(
         exec,
@@ -1423,7 +1425,20 @@ export async function applySourceUpdate(options: SourceUpdateOptions): Promise<S
       restarted,
       restartDeferred,
     };
-  }, 240_000);
+  }, 240_000).catch(async (error): Promise<SourceUpdateApplyResult> => {
+    if (enteredUpdate || !(error instanceof Error) || error.message !== 'Timed out waiting for OpenMotion lock: ' + lockPath) throw error;
+    // A cold install/build can outlast the bounded wait. Report contention without
+    // touching the active updater's checkout or extending the caller's wait.
+    const message = 'Another source update is still running for this checkout; retry after it finishes.';
+    await writeUpdateState(options.dataDirectory, {
+      lastCheckedAt: undefined,
+      lastAttemptAt: now,
+      lastStatus: 'failed',
+      branch,
+      lastError: message,
+    }).catch(() => {});
+    return { status: 'failed', updated: false, reason: 'update_in_progress', branch, error: message };
+  });
 }
 
 export async function maybeAutoUpdateBeforeCreation(
