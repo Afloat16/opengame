@@ -1,0 +1,152 @@
+name: Validate contribution source batch 12
+on:
+  push:
+    branches: [validation/improvements-20261127-batch12]
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Verify ${{ matrix.label }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - label: trigger-overlap
+            sha: '3ff60a24204d476fbdc72e92d9e10057494ec9f1'
+            tests: 'tests/trigger-concurrency.test.ts tests/triggers.test.ts'
+    env:
+      OPENMOTION_TELEMETRY: '0'
+      OPENMOTION_AUTO_UPDATE: '0'
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - name: Checkout exact contribution commit
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: Afloat16/opengame
+          ref: ${{ matrix.sha }}
+          fetch-depth: 3
+          lfs: false
+          persist-credentials: false
+      - name: Verify source identity
+        env:
+          EXPECTED_SOURCE_SHA: ${{ matrix.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          git show --no-patch --format=fuller HEAD
+      - name: Setup repository-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Install integration media tools
+        run: |
+          if ! command -v ffprobe >/dev/null || ! command -v ffmpeg >/dev/null; then
+            apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+            if ! sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg; then
+              sudo apt-get "${apt_options[@]}" update
+              sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg
+            fi
+          fi
+          ffmpeg -version
+          ffprobe -version
+      - name: Check source policy and suite registration
+        run: |
+          npm run templates:check -- --final-tree
+          npm run storage:check -- --final-tree
+          node --test tests/repository-storage.test.ts tests/media-transfer.test.ts
+          node --test tests/template-library.test.ts tests/ci-scope.test.mjs
+          node --test tests/publish-template-catalog.test.mjs
+          node --test --test-skip-pattern='^the scanner opens the nested application' tests/release-scan.test.mjs
+      - name: Check source
+        run: npm run check
+      - name: Check backend types
+        run: npm run typecheck:backend
+      - name: Check Studio types
+        run: npm run typecheck:studio
+      - name: Build Studio
+        run: npm run build:studio
+      - name: Run contribution and existing regressions
+        env:
+          REGRESSION_FILES: ${{ matrix.tests }}
+        run: |
+          read -r -a regression_files <<< "$REGRESSION_FILES"
+          node --experimental-strip-types --test "${regression_files[@]}"
+      - name: Verify tracked source stayed unchanged
+        run: git diff --exit-code
+
+  design:
+    name: Verify ${{ matrix.label }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - label: artifact-directory-budget
+            sha: '51c09a315b0159c9f12024752b3ee5ab793a2cec'
+            package: '@open-design/daemon'
+            tests: 'tests/run-artifact-directory-budget.test.ts tests/run-artifact-fs.test.ts'
+          - label: quoted-secret-redaction
+            sha: 'd40a2edbc722066778e977ad7aeeaff8a1a4124d'
+            package: '@open-design/diagnostics'
+            tests: 'tests/quoted-secret-redaction.test.ts tests/redaction.test.ts'
+          - label: library-literal-tags
+            sha: 'b8db3a3cdb22f7feff6537c8842ad63885318cec'
+            package: '@open-design/daemon'
+            tests: 'tests/library-tag-filter.test.ts'
+    env:
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - name: Checkout exact contribution commit
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: Afloat16/open-design
+          ref: ${{ matrix.sha }}
+          fetch-depth: 3
+          lfs: false
+          persist-credentials: false
+      - name: Verify source identity
+        env:
+          EXPECTED_SOURCE_SHA: ${{ matrix.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+      - name: Configure CI parallelism
+        uses: ./.github/actions/configure-ci-parallelism
+      - name: Setup repository workspace
+        uses: ./.github/actions/setup-workspace
+        with:
+          postinstall-intent: workspace
+      - name: Verify directory regressions fail before the fix
+        if: matrix.label == 'artifact-directory-budget'
+        run: |
+          git show 570111e46043da93281d8e47a02f53f767638960:apps/daemon/src/run-artifact-fs.ts > apps/daemon/src/run-artifact-fs.ts
+          set +e
+          pnpm --filter @open-design/daemon exec vitest run tests/run-artifact-directory-budget.test.ts --reporter=json --outputFile="$RUNNER_TEMP/artifact-red.json"
+          result=$?
+          set -e
+          git restore --source=HEAD -- apps/daemon/src/run-artifact-fs.ts
+          test "$result" -eq 1
+          node -e 'const r=JSON.parse(require("node:fs").readFileSync(process.env.RUNNER_TEMP+"/artifact-red.json","utf8")); if(r.numFailedTests!==2||r.numPassedTests!==4) throw new Error(JSON.stringify(r)); console.log({failed:r.numFailedTests,passed:r.numPassedTests});'
+      - name: Run focused regressions with repository dependencies
+        env:
+          PACKAGE: ${{ matrix.package }}
+          TEST_FILES: ${{ matrix.tests }}
+        run: |
+          read -r -a test_files <<< "$TEST_FILES"
+          pnpm --filter "$PACKAGE" exec vitest run "${test_files[@]}"
+      - name: Check repository guard
+        run: pnpm guard
+      - name: Build declarations used by workspace type checks
+        run: |
+          pnpm --filter @open-design/desktop build
+          pnpm --filter @open-design/web build:sidecar
+      - name: Check repository types
+        run: pnpm typecheck
+      - name: Verify tracked source stayed unchanged
+        run: git diff --exit-code
