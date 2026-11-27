@@ -414,8 +414,10 @@ export class ContentBatchService {
       }
     });
     this.activeExecutions.set(validId, { started, finished: execution });
-    // Background failures remain observable through wait/cancel without an unhandled rejection.
-    void execution.catch(() => {});
+    // A fire-and-forget start has no caller awaiting worker failures.
+    void execution.catch(error => {
+      console.error(`[content-batch] Batch ${validId} execution failed:`, error);
+    });
 
     return options.wait ? execution : started;
   }
@@ -640,7 +642,8 @@ export class ContentBatchService {
       controller.abort();
       const running = this.activeExecutions.get(validId);
       if (running) await running.finished.catch(() => {});
-      return this.loadJob(validId);
+      // Initialization or worker persistence may have failed before cancellation
+      // reached disk. Reconcile any non-terminal job under the existing lock.
     }
 
     return withProcessLock(this.lockPath, async () => {
