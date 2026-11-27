@@ -1,0 +1,81 @@
+name: Validate large snapshot pruning batches
+on:
+  push:
+    branches: [validation/snapshot-prune-batches-20261127]
+permissions:
+  contents: read
+jobs:
+  design:
+    name: Verify ${{ matrix.label }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      max-parallel: 2
+      matrix:
+        include:
+          - label: snapshot-prune-batches
+            sha: 'faaafa1ebaefd3a2ea4e7ae39c2adcaab4d13af5'
+            package: '@open-design/daemon'
+            tests: 'tests/plugins-snapshot-prune-batch.test.ts tests/plugins-snapshots.test.ts'
+            regression: 'tests/plugins-snapshot-prune-batch.test.ts'
+            paths: 'apps/daemon/src/plugins/snapshots.ts'
+            failed: 1
+            passed: 2
+    env:
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - name: Checkout exact contribution commit
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: Afloat16/open-design
+          ref: ${{ matrix.sha }}
+          fetch-depth: 4
+          lfs: false
+          persist-credentials: false
+      - name: Verify source identity
+        env:
+          EXPECTED_SOURCE_SHA: ${{ matrix.sha }}
+        run: test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+      - name: Configure CI parallelism
+        uses: ./.github/actions/configure-ci-parallelism
+      - name: Setup repository workspace
+        uses: ./.github/actions/setup-workspace
+        with:
+          postinstall-intent: workspace
+      - name: Verify regressions fail before the fix
+        env:
+          PACKAGE: ${{ matrix.package }}
+          REGRESSION: ${{ matrix.regression }}
+          BASELINE_PATHS: ${{ matrix.paths }}
+          EXPECTED_FAILED: ${{ matrix.failed }}
+          EXPECTED_PASSED: ${{ matrix.passed }}
+        run: |
+          read -r -a baseline_paths <<< "$BASELINE_PATHS"
+          for file in "${baseline_paths[@]}"; do
+            git show "10f3f96e7d3cadcadd25b2b2f3a188c96877be0e:$file" > "$file"
+          done
+          set +e
+          pnpm --filter "$PACKAGE" exec vitest run "$REGRESSION" --reporter=json --outputFile="$RUNNER_TEMP/regression-red.json"
+          result=$?
+          set -e
+          git restore --source=HEAD -- "${baseline_paths[@]}"
+          test "$result" -eq 1
+          node -e 'const r=JSON.parse(require("node:fs").readFileSync(process.env.RUNNER_TEMP+"/regression-red.json","utf8")); if(r.numFailedTests!==Number(process.env.EXPECTED_FAILED)||r.numPassedTests!==Number(process.env.EXPECTED_PASSED)) throw new Error(JSON.stringify(r)); console.log({failed:r.numFailedTests,passed:r.numPassedTests});'
+      - name: Run focused regressions with repository dependencies
+        env:
+          PACKAGE: ${{ matrix.package }}
+          TEST_FILES: ${{ matrix.tests }}
+        run: |
+          read -r -a test_files <<< "$TEST_FILES"
+          pnpm --filter "$PACKAGE" exec vitest run "${test_files[@]}"
+      - name: Check repository guard
+        run: pnpm guard
+      - name: Build declarations used by workspace type checks
+        run: |
+          pnpm --filter @open-design/desktop build
+          pnpm --filter @open-design/web build:sidecar
+      - name: Check repository types
+        run: pnpm typecheck
+      - name: Verify tracked source stayed unchanged
+        run: git diff --exit-code
