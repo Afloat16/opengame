@@ -167,7 +167,7 @@ export class ContentBatchService {
   readonly root: string;
   readonly lockPath: string;
   private activeControllers = new Map<string, AbortController>();
-  private activeExecutions = new Map<string, Promise<ContentBatchJob>>();
+  private activeExecutions = new Map<string, { started: Promise<ContentBatchJob>; finished: Promise<ContentBatchJob> }>();
 
   constructor(directory: string) {
     this.directory = directory;
@@ -371,11 +371,12 @@ export class ContentBatchService {
     const validId = validateUuid(id, 'batchId');
     const existingRun = this.activeExecutions.get(validId);
     if (existingRun) {
-      return options.wait ? existingRun : this.loadJob(validId);
+      return options.wait ? existingRun.finished : existingRun.started.then(() => this.loadJob(validId));
     }
 
     const controller = new AbortController();
-    const initial = await withProcessLock(this.lockPath, async () => {
+    this.activeControllers.set(validId, controller);
+    const started = withProcessLock(this.lockPath, async () => {
       const job = await this.loadJob(validId);
       if (job.state === 'running') return job;
       if (options.onlyFailed) {
@@ -404,23 +405,19 @@ export class ContentBatchService {
       return job;
     });
 
-    if (initial.state !== 'running') {
-      return initial;
-    }
-
-    this.activeControllers.set(validId, controller);
-    const execution = this.runPool(validId, host, controller.signal).finally(() => {
-      this.activeControllers.delete(validId);
-      if (this.activeExecutions.get(validId) === execution) {
+    const execution = started.then(initial => initial.state === 'running'
+      ? this.runPool(validId, host, controller.signal)
+      : initial).finally(() => {
+      if (this.activeExecutions.get(validId)?.finished === execution) {
+        this.activeControllers.delete(validId);
         this.activeExecutions.delete(validId);
       }
     });
-    this.activeExecutions.set(validId, execution);
+    this.activeExecutions.set(validId, { started, finished: execution });
+    // Background failures remain observable through wait/cancel without an unhandled rejection.
+    void execution.catch(() => {});
 
-    if (options.wait) {
-      return execution;
-    }
-    return initial;
+    return options.wait ? execution : started;
   }
 
   async retryFailed(
@@ -642,7 +639,7 @@ export class ContentBatchService {
     if (controller) {
       controller.abort();
       const running = this.activeExecutions.get(validId);
-      if (running) await running.catch(() => {});
+      if (running) await running.finished.catch(() => {});
       return this.loadJob(validId);
     }
 
@@ -722,7 +719,7 @@ export class ContentBatchService {
     for (const controller of this.activeControllers.values()) {
       controller.abort();
     }
-    await Promise.allSettled([...this.activeExecutions.values()]);
+    await Promise.allSettled([...this.activeExecutions.values()].map(run => run.finished));
     this.activeControllers.clear();
     this.activeExecutions.clear();
     for (const [key, inst] of services) {

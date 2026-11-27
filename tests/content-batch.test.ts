@@ -138,3 +138,122 @@ test('Batch optimization works identically via HTTP routes and openmotion_assets
       await running.close();
     }
   }));
+
+test('concurrent batch starts share one initialization and worker pool', t =>
+  fixture(async store => {
+    const service = new ContentBatchService(store.directory);
+    const { batch } = await service.create({
+      title: 'Start once',
+      mode: 'mcp-pipeline',
+      pipeline: [{ id: 'inspect', tool: 'openmotion_get_project', arguments: {} }],
+      items: [{ label: 'Variant' }],
+    });
+    let releasePool!: () => void;
+    const poolGate = new Promise<void>(resolve => { releasePool = resolve; });
+    const runPool = (service as any).runPool.bind(service);
+    let poolStarts = 0;
+    let toolCalls = 0;
+    t.mock.method(service as any, 'runPool', async (...args: any[]) => {
+      poolStarts++;
+      await poolGate;
+      return runPool(...args);
+    });
+    const host = {
+      callMcpTool: async () => { toolCalls++; return { projectId: 'variant' }; },
+      runAgentOptimization: async () => ({ chatId: 'unused' }),
+    };
+    try {
+      const initial = await Promise.all([
+        service.start(batch.id, host),
+        service.start(batch.id, host),
+        service.start(batch.id, host),
+      ]);
+      assert.deepEqual(initial.map(job => job.state), ['running', 'running', 'running']);
+      assert.equal(poolStarts, 1);
+      const finished = service.start(batch.id, host, { wait: true });
+      releasePool();
+      const completed = await finished;
+      assert.equal(completed.state, 'completed');
+      assert.equal(completed.counts.completed, 1);
+      assert.equal(toolCalls, 1);
+    } finally {
+      releasePool();
+      await service.close();
+    }
+  }));
+
+test('cancelling a batch during initialization prevents tool execution', t =>
+  fixture(async store => {
+    const service = new ContentBatchService(store.directory);
+    const { batch } = await service.create({
+      title: 'Cancel before dispatch',
+      mode: 'mcp-pipeline',
+      pipeline: [{ id: 'inspect', tool: 'openmotion_get_project', arguments: {} }],
+      items: [{ label: 'Variant' }],
+    });
+    let releaseSave!: () => void;
+    let saving!: () => void;
+    const saveGate = new Promise<void>(resolve => { releaseSave = resolve; });
+    const enteredSave = new Promise<void>(resolve => { saving = resolve; });
+    const saveJob = (service as any).saveJobLocked.bind(service);
+    let firstSave = true;
+    t.mock.method(service as any, 'saveJobLocked', async (job: any) => {
+      if (firstSave) {
+        firstSave = false;
+        saving();
+        await saveGate;
+      }
+      return saveJob(job);
+    });
+    let toolCalls = 0;
+    const host = {
+      callMcpTool: async () => { toolCalls++; return {}; },
+      runAgentOptimization: async () => ({ chatId: 'unused' }),
+    };
+    try {
+      const started = service.start(batch.id, host, { wait: true });
+      await enteredSave;
+      const cancelled = service.cancel(batch.id);
+      releaseSave();
+      const results = await Promise.all([started, cancelled]);
+      assert.ok(results.every(job => job.state === 'cancelled'));
+      assert.equal((await service.get(batch.id)).counts.cancelled, 1);
+      assert.equal(toolCalls, 0);
+    } finally {
+      releaseSave();
+      await service.close();
+    }
+  }));
+
+test('a failed batch initialization releases its execution record for retry', t =>
+  fixture(async store => {
+    const service = new ContentBatchService(store.directory);
+    const { batch } = await service.create({
+      title: 'Retry initialization',
+      mode: 'mcp-pipeline',
+      pipeline: [{ id: 'inspect', tool: 'openmotion_get_project', arguments: {} }],
+      items: [{ label: 'Variant' }],
+    });
+    const loadJob = (service as any).loadJob.bind(service);
+    let failOnce = true;
+    t.mock.method(service as any, 'loadJob', async (id: string) => {
+      if (failOnce) {
+        failOnce = false;
+        throw new Error('Temporary storage error');
+      }
+      return loadJob(id);
+    });
+    let toolCalls = 0;
+    const host = {
+      callMcpTool: async () => { toolCalls++; return {}; },
+      runAgentOptimization: async () => ({ chatId: 'unused' }),
+    };
+    try {
+      await assert.rejects(service.start(batch.id, host), /Temporary storage error/);
+      const completed = await service.start(batch.id, host, { wait: true });
+      assert.equal(completed.state, 'completed');
+      assert.equal(toolCalls, 1);
+    } finally {
+      await service.close();
+    }
+  }));
