@@ -1,0 +1,100 @@
+name: Validate active review follow-ups
+on:
+  push:
+    branches: [validation/review-20261127-1118]
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Verify PR ${{ matrix.pr }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - pr: 107
+            sha: '10e4a6ff7988d6c898a2e7c3ce8bc93076544d9c'
+            tests: 'tests/transcription-response-budget.test.ts'
+          - pr: 108
+            sha: '92b0689f1618be304295b76576341504c41d0a57'
+            tests: 'tests/glb-meshopt-publish.test.ts'
+    env:
+      OPENMOTION_TELEMETRY: '0'
+      OPENMOTION_AUTO_UPDATE: '0'
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - name: Checkout exact contribution commit
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: Afloat16/opengame
+          ref: ${{ matrix.sha }}
+          fetch-depth: 1
+          lfs: false
+          persist-credentials: false
+      - name: Verify source identity
+        env:
+          EXPECTED_SOURCE_SHA: ${{ matrix.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          git show --no-patch --format=fuller HEAD
+      - name: Setup repository-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check source policy and suite registration
+        run: |
+          npm run templates:check -- --final-tree
+          npm run storage:check -- --final-tree
+          node --test tests/repository-storage.test.ts tests/media-transfer.test.ts
+          node --test tests/template-library.test.ts tests/ci-scope.test.mjs
+          node --test tests/publish-template-catalog.test.mjs
+          node --test --test-skip-pattern='^the scanner opens the nested application' tests/release-scan.test.mjs
+      - name: Check source
+        run: npm run check
+      - name: Check backend types
+        run: npm run typecheck:backend
+      - name: Check Studio types
+        run: npm run typecheck:studio
+      - name: Build Studio
+        run: npm run build:studio
+      - name: Run contribution regressions
+        env:
+          REGRESSION_FILES: ${{ matrix.tests }}
+        run: |
+          read -r -a regression_files <<< "$REGRESSION_FILES"
+          node --experimental-strip-types --test "${regression_files[@]}"
+      - name: Check actual HTML parser integration
+        if: matrix.pr == 95 || matrix.pr == 103
+        run: node --experimental-strip-types --test --test-name-pattern '^H1:' tests/game-harness-generalization.test.ts
+      - name: Install integration media tools
+        if: matrix.pr == 107 || matrix.pr == 108 || matrix.pr == 110
+        run: |
+          if ! command -v ffprobe >/dev/null || ! command -v ffmpeg >/dev/null; then
+            apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+            if ! sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg; then
+              sudo apt-get "${apt_options[@]}" update
+              sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg
+            fi
+          fi
+          ffmpeg -version
+          ffprobe -version
+      - name: Run existing bundle and publication integration
+        if: matrix.pr == 108
+        run: node --experimental-strip-types --test --test-name-pattern '^Option B \+ H4:' tests/game-harness-generalization.test.ts
+      - name: Run existing transcription regressions
+        if: matrix.pr == 107 || matrix.pr == 110
+        run: node --experimental-strip-types --test tests/transcription.test.ts tests/transcription-transport.test.ts
+      - name: Run existing resume regressions
+        if: matrix.pr == 113
+        run: node --experimental-strip-types --test --test-name-pattern '^account image (download resumes|auto retry)' tests/gateway.test.ts
+      - name: Run existing GLB inspector integration
+        if: matrix.pr == 114
+        run: node --experimental-strip-types --test --test-name-pattern '^H3:' tests/game-harness-generalization.test.ts
+      - name: Verify tracked source stayed unchanged
+        run: git diff --exit-code
