@@ -145,6 +145,23 @@ export async function optimizeGlbTexturesForPublish(bytes: Buffer): Promise<GlbO
     if (ranges[i].start < ranges[i - 1].end) return unchanged;
   }
 
+  // Meshopt payloads reference buffers directly, so they may live outside every
+  // ordinary bufferView. Retain these ranges when compacting the embedded BIN.
+  const compressedRanges: Array<{ index: number; extension: string; start: number; length: number }> = [];
+  const compressedViews = new Set<number>();
+  for (let index = 0; index < doc.bufferViews.length; index++) {
+    for (const extension of ['EXT_meshopt_compression', 'KHR_meshopt_compression']) {
+      const ref = doc.bufferViews[index].extensions?.[extension];
+      if (!ref) continue;
+      compressedViews.add(index);
+      if (ref.buffer !== 0) continue;
+      const start = ref.byteOffset ?? 0;
+      const length = ref.byteLength;
+      if (!Number.isSafeInteger(start) || !Number.isSafeInteger(length) || start < 0 || length <= 0 || start + length > binary.length) return unchanged;
+      compressedRanges.push({ index, extension, start, length });
+    }
+  }
+
   // Track textures carrying data maps (normal / metallicRoughness / occlusion) so they use higher WebP quality.
   const dataTextureIndices = new Set<number>();
   for (const material of doc.materials ?? []) {
@@ -171,7 +188,7 @@ export async function optimizeGlbTexturesForPublish(bytes: Buffer): Promise<GlbO
   }
 
   for (const [bvIndex, imageIndices] of bvToImages.entries()) {
-    if (accessorViews.has(bvIndex)) continue;
+    if (accessorViews.has(bvIndex) || compressedViews.has(bvIndex)) continue;
     const primaryImage = doc.images[imageIndices[0]];
     const mimeType = primaryImage?.mimeType;
     if (mimeType !== 'image/png' && mimeType !== 'image/jpeg') continue;
@@ -197,20 +214,37 @@ export async function optimizeGlbTexturesForPublish(bytes: Buffer): Promise<GlbO
   // Rebuild compacted 4-byte-aligned BIN chunk and update JSON metadata.
   const nextDoc = JSON.parse(JSON.stringify(doc));
   const binParts: Buffer[] = [];
+  const relocatedRanges = new Map<string, number>();
   let binOffset = 0;
-  for (let bvIndex = 0; bvIndex < nextDoc.bufferViews.length; bvIndex++) {
-    const view = nextDoc.bufferViews[bvIndex];
+  const appendBinary = (data: Buffer): number => {
     const pad = (4 - (binOffset % 4)) % 4;
     if (pad > 0) {
       binParts.push(Buffer.alloc(pad));
       binOffset += pad;
     }
-    const replacement = convertedViewMap.get(bvIndex);
-    const data = replacement ?? binary.subarray(view.byteOffset ?? 0, (view.byteOffset ?? 0) + (view.byteLength ?? 0));
-    view.byteOffset = binOffset;
-    view.byteLength = data.length;
+    const offset = binOffset;
     binParts.push(data);
     binOffset += data.length;
+    return offset;
+  };
+  for (let bvIndex = 0; bvIndex < nextDoc.bufferViews.length; bvIndex++) {
+    const view = nextDoc.bufferViews[bvIndex];
+    const start = view.byteOffset ?? 0;
+    const length = view.byteLength ?? 0;
+    const replacement = convertedViewMap.get(bvIndex);
+    const data = replacement ?? binary.subarray(start, start + length);
+    view.byteOffset = appendBinary(data);
+    view.byteLength = data.length;
+    if (!replacement) relocatedRanges.set(`${start}:${length}`, view.byteOffset);
+  }
+  for (const { index, extension, start, length } of compressedRanges) {
+    const key = `${start}:${length}`;
+    let offset = relocatedRanges.get(key);
+    if (offset === undefined) {
+      offset = appendBinary(binary.subarray(start, start + length));
+      relocatedRanges.set(key, offset);
+    }
+    nextDoc.bufferViews[index].extensions[extension].byteOffset = offset;
   }
   const trailingPad = (4 - (binOffset % 4)) % 4;
   if (trailingPad > 0) {
