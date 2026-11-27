@@ -24,6 +24,7 @@ async function fixture(t: TestContext) {
 function host(callMcpTool: TriggerExecutionHost['callMcpTool']): TriggerExecutionHost {
   return {
     callMcpTool,
+    runAgentOptimization: async () => { throw new Error('Unexpected agent optimization target'); },
     contentBatches: () => { throw new Error('Unexpected content batch target'); },
     runSuperAgentTurn: async () => { throw new Error('Unexpected Super Agent target'); },
   };
