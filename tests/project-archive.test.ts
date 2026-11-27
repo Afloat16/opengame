@@ -9,7 +9,7 @@ import { createHash, randomUUID } from 'node:crypto';
 import { crc32, deflateRawSync } from 'node:zlib';
 import { fixture } from './fixtures.ts';
 import { transport } from './http.ts';
-import { projectArchive, importProjects } from '../project-archive.ts';
+import { projectArchive, importProjects, duplicateProject } from '../project-archive.ts';
 import { readProjectZip } from '../shared/project-zip.ts';
 import { firstFoldedDuplicate, portableNameProblem } from '../shared/project-name.ts';
 import { zip } from '../scripts/zip.mjs';
@@ -332,3 +332,18 @@ test('archive import rejects a source that would block without a writer', { skip
     assert.ok(Date.now() - started < 5000, 'a FIFO source must be rejected without waiting for a writer');
   } finally { await rm(directory, { recursive: true, force: true }); }
 }));
+
+test('archive download repairs a copied title that already contains an unpaired surrogate', () => fixture(async store => {
+  const { projects: [source] } = await importProjects(store, 'emoji-original', native('🎮'.repeat(47) + '/'), pluginRoot);
+  const copy = await duplicateProject(store, { projectId: source.projectId, requestId: 'emoji-copy' }, pluginRoot);
+  assert.ok(copy.title.endsWith(' (copy)'));
+  const exported = await projectArchive(store, { action: 'export', projectIds: [copy.projectId], requestId: 'emoji-copy-export' }, pluginRoot);
+  assert.ok('archivePath' in exported);
+  const http = transport(store, { runtimeRoot: pluginRoot });
+  const response = await http(exported.downloadUrl);
+  assert.equal(response.status, 200);
+  assert.equal(exported.filename, copy.title.toWellFormed() + '.zip');
+  const disposition = response.headers.get('content-disposition') ?? '';
+  assert.ok(disposition.includes("filename*=UTF-8''" + encodeURIComponent(exported.filename)));
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), await readFile(exported.archivePath));
+}, false));
