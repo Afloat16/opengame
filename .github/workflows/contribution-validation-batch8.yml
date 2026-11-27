@@ -1,0 +1,95 @@
+name: Validate contribution source batch 8
+on:
+  push:
+    branches: [validation/improvements-20261127-batch8]
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Verify PR ${{ matrix.pr }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - pr: 95
+            sha: '3d73f990945cb032713152705870183a66b1e784'
+            tests: 'tests/game-module-urls.test.ts'
+          - pr: 107
+            sha: 'c7dbd9006acc41c62e7d019a45cbe8286e749d71'
+            tests: 'tests/transcription-response-budget.test.ts'
+          - pr: 108
+            sha: '273a58dc02624ea80d57b9eed0c63e385ce38ee6'
+            tests: 'tests/glb-meshopt-publish.test.ts'
+          - pr: 109
+            sha: '64e6684cbc9a065b9eb0ae14e2622e4c2696a2f2'
+            tests: 'tests/game-svg-cover-attributes.test.ts'
+          - pr: 110
+            sha: '01b6327404e92aa103be6c93c9abda0bc9ca628d'
+            tests: 'tests/transcript-cue-entities.test.ts'
+    env:
+      OPENMOTION_TELEMETRY: '0'
+      OPENMOTION_AUTO_UPDATE: '0'
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - name: Checkout exact contribution commit
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: Afloat16/opengame
+          ref: ${{ matrix.sha }}
+          fetch-depth: 1
+          lfs: false
+          persist-credentials: false
+      - name: Verify source identity
+        env:
+          EXPECTED_SOURCE_SHA: ${{ matrix.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          git show --no-patch --format=fuller HEAD
+      - name: Setup repository-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check source
+        run: npm run check
+      - name: Check backend types
+        run: npm run typecheck:backend
+      - name: Check Studio types
+        run: npm run typecheck:studio
+      - name: Build Studio
+        run: npm run build:studio
+      - name: Run contribution regressions
+        env:
+          REGRESSION_FILES: ${{ matrix.tests }}
+        run: |
+          read -r -a regression_files <<< "$REGRESSION_FILES"
+          node --experimental-strip-types --test "${regression_files[@]}"
+      - name: Check actual HTML parser integration
+        if: matrix.pr == 95
+        run: node --experimental-strip-types --test --test-name-pattern '^H1:' tests/game-harness-generalization.test.ts
+      - name: Install existing bundle integration media tools
+        if: matrix.pr == 108
+        run: |
+          if ! command -v ffprobe >/dev/null || ! command -v ffmpeg >/dev/null; then
+            apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+            if ! sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg; then
+              sudo apt-get "${apt_options[@]}" update
+              sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg
+            fi
+          fi
+          ffmpeg -version
+          ffprobe -version
+      - name: Run existing bundle and publication integration
+        if: matrix.pr == 108
+        run: node --experimental-strip-types --test --test-name-pattern '^Option B \+ H4:' tests/game-harness-generalization.test.ts
+      - name: Run existing transcription regressions
+        if: matrix.pr == 107 || matrix.pr == 110
+        run: node --experimental-strip-types --test tests/transcription.test.ts tests/transcription-transport.test.ts
+      - name: Verify tracked source stayed unchanged
+        run: git diff --exit-code
