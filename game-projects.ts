@@ -2030,8 +2030,8 @@ export async function gameHttp(req: IncomingMessage, res: ServerResponse, url: U
       let status = 200, body = payload;
       // HEAD describes the complete representation. With no validator available,
       // an If-Range request must also receive the complete current representation.
-      const rangeHeader = req.headers.range;
-      if (req.method === 'GET' && rangeHeader && req.headers['if-range'] === undefined
+      const rangeHeader = req.headers?.range;
+      if (req.method === 'GET' && rangeHeader && req.headers?.['if-range'] === undefined
         && /^bytes=/i.test(rangeHeader) && !rangeHeader.includes(',')) {
         const range = /^bytes=[ \t]*(\d*)-(\d*)[ \t]*$/i.exec(rangeHeader);
         const first = range?.[1] ? Number(range[1]) : undefined;
