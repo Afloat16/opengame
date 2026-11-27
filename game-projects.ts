@@ -1840,8 +1840,8 @@ export class GameRuntime {
   }
   private run(code: string): any { return vm.runInContext(code, this.context, { timeout: 50 }); }
   setup(players: string[]) { this.run(`state=setup(ctx,${JSON.stringify(players)}); if(state===undefined || state?.then)throw Error('setup must return synchronous state'); JSON.stringify(state);`); }
-  tick(tick: number) { this.run(`ctx.tick=${tick};ctx.now=${tick * 1000 / this.meta.tickRate}; if(meta.serverTick === true) state=applyAction(state,null,{type:'tick'},ctx);`); }
-  membership(player: string, connected: boolean, expired = false) { this.run(`if(meta.serverTick === true) state=applyAction(state,null,${JSON.stringify({type:'membership',player,connected,expired})},ctx);`); }
+  tick(tick: number) { this.run(`ctx.tick=${tick};ctx.now=${tick * 1000 / this.meta.tickRate}; if(meta.serverTick === true) { state=applyAction(state,null,{type:'tick'},ctx); if(state===undefined || state?.then)throw Error('applyAction must return synchronous state'); JSON.stringify(state); }`); }
+  membership(player: string, connected: boolean, expired = false) { this.run(`if(meta.serverTick === true) { state=applyAction(state,null,${JSON.stringify({type:'membership',player,connected,expired})},ctx); if(state===undefined || state?.then)throw Error('applyAction must return synchronous state'); JSON.stringify(state); }`); }
   apply(player: string, action: unknown, dryRun = false) {
     this.run(`{const action=JSON.parse(${JSON.stringify(JSON.stringify(action))}); const valid=validateAction(state,${JSON.stringify(player)},action,ctx); if(typeof valid!=='boolean')throw Error('validateAction must return boolean'); if(valid||${dryRun}) {state=applyAction(state,${JSON.stringify(player)},action,ctx); if(state===undefined || state?.then)throw Error('applyAction must return synchronous state'); JSON.stringify(state);}}`);
   }
