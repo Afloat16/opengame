@@ -512,42 +512,34 @@ export class ContentBatchService {
           if (jobSnapshot.scenarioConfig?.createMotion && !motionStep) {
             throw new Error('INVALID_ARGUMENT: Scenario has no Motion project step');
           }
+          const fields = new Map(scenario.briefFields.map(field => [field.id, field]));
+          const briefValues: Record<string, string | string[]> = {};
+          for (const [key, value] of Object.entries({ ...jobSnapshot.sharedVariables, ...itemSnapshot.variables })) {
+            if (value === undefined || value === null) continue;
+            const field = fields.get(key);
+            if (!field) throw new Error(`INVALID_ARGUMENT: Unknown brief field: ${key}`);
+            briefValues[key] = Array.isArray(value) && (field.kind === 'list' || field.kind === 'multi')
+              ? value.map(String)
+              : String(value);
+          }
+          if (itemSnapshot.prompt) briefValues.idea = itemSnapshot.prompt;
           signal.throwIfAborted();
           const created = await host.callMcpTool('openmotion_assets_use', {
             action: 'scenario',
             scenario: {
               command: 'create',
               scenarioId,
+              brief: briefValues,
               title: itemSnapshot.label.slice(0, 120).replace(/[\uD800-\uDBFF]$/, ''),
               ...(jobSnapshot.scenarioConfig?.locale ? { locale: jobSnapshot.scenarioConfig.locale } : {}),
               requestId: derivedBatchRequestId(batchId, itemSnapshot.id, 'sc-create', attempt),
             },
           });
           stepOutputs.create = created;
+          if (Object.keys(briefValues).length > 0) stepOutputs.brief = created;
           outputs = mergeOutputs(outputs, extractStepOutputs('openmotion_assets_use', created));
           let runRevision = created.run.revision as number;
           const runId = String(created.run.id);
-
-          const briefValues: Record<string, string | string[]> = {};
-          for (const [k, v] of Object.entries({ ...jobSnapshot.sharedVariables, ...itemSnapshot.variables })) {
-            if (v !== undefined && v !== null) briefValues[k] = Array.isArray(v) ? v.map(String) : String(v);
-          }
-          if (itemSnapshot.prompt) briefValues.idea = itemSnapshot.prompt;
-          if (Object.keys(briefValues).length > 0) {
-            signal.throwIfAborted();
-            const briefed = await host.callMcpTool('openmotion_assets_use', {
-              action: 'scenario',
-              scenario: {
-                command: 'update_brief',
-                runId,
-                expectedRevision: runRevision,
-                brief: briefValues,
-                requestId: derivedBatchRequestId(batchId, itemSnapshot.id, 'sc-brief', attempt),
-              },
-            });
-            stepOutputs.brief = briefed;
-            runRevision = briefed.run.revision;
-          }
 
           if (jobSnapshot.scenarioConfig?.createPage && pageStep) {
             signal.throwIfAborted();

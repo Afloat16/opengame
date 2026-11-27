@@ -227,7 +227,7 @@ test('scenario matrix preserves typed briefs and creates linked page and Motion 
     assert.equal(run.title, 'a'.repeat(119));
     assert.deepEqual(run.brief.valueProps, ['Keyboard controls', 'Clear typography']);
     assert.equal(run.brief.idea, 'Launch an accessible editing toolkit');
-    assert.equal(run.revision, 4);
+    assert.equal(run.revision, 3);
     assert.equal(motionRequests.length, 1);
     assert.equal(motionRequests[0].projectType, 'natural_language');
     assert.equal(String(motionRequests[0].title).length, 100);
@@ -288,8 +288,48 @@ test('scenario matrix cancellation stops subsequent mutations after an in-flight
       assert.equal(final.state, 'cancelled');
       assert.deepEqual(commands, ['create']);
       const runId = final.items[0].outputs.find(output => output.kind === 'scenario-run')!.runId!;
-      assert.deepEqual((await scenarios.get(runId)).run.brief, {});
+      assert.deepEqual((await scenarios.get(runId)).run.brief, { productName: 'Toolkit' });
     } finally {
       releaseCreate();
     }
   }));
+
+
+test('scenario matrix validates briefs before creating runs: scalar arrays remain compatible', () =>
+  scenarioBatchFixture(async ({ service, scenarios, host }) => {
+    const { batch } = await service.create({
+      title: 'Scalar array brief', mode: 'scenario-matrix',
+      scenarioConfig: { scenarioId: 'design-full-chain', createPage: true },
+      items: [{ label: 'Audience variant', variables: {
+        productName: 'Toolkit', audience: ['Designers', 'Marketers'], valueProps: ['Fast', 'Accessible'],
+      } }],
+      autoStart: true, wait: true,
+    }, host);
+    assert.equal(batch.state, 'completed', JSON.stringify(batch.items));
+    const { runs } = await scenarios.list();
+    assert.equal(runs.length, 1);
+    const { run } = await scenarios.get(runs[0].id);
+    assert.equal(run.brief.audience, 'Designers,Marketers');
+    assert.deepEqual(run.brief.valueProps, ['Fast', 'Accessible']);
+    assert.equal(run.revision, 2);
+  }));
+
+for (const [label, variables, message] of [
+  ['unknown fields', { unsupportedField: 'unused' }, /Unknown brief field/],
+  ['invalid list values', { valueProps: 'must be a list' }, /must be an array/],
+] as const) {
+  test('scenario matrix validates briefs before creating runs: ' + label, () =>
+    scenarioBatchFixture(async ({ service, scenarios, host, design }) => {
+      const { batch } = await service.create({
+        title: 'Invalid brief', mode: 'scenario-matrix',
+        scenarioConfig: { scenarioId: 'design-full-chain', createPage: true },
+        items: [{ label: 'Invalid variant', variables }],
+        autoStart: true, wait: true,
+      }, host);
+      assert.equal(batch.state, 'failed');
+      assert.match(batch.items[0].error ?? '', message);
+      assert.equal((await scenarios.list()).runs.length, 0);
+      assert.equal((await design.list()).length, 0);
+      assert.deepEqual(batch.items[0].outputs, []);
+    }));
+}
