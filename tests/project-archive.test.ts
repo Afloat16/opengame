@@ -104,6 +104,19 @@ test('ZIP roundtrip preserves source, assets, fonts and edits as independent pro
   assert.equal(store.projectCatalog().activeId, before.activeId);
 }, false));
 
+test('archive download names preserve Unicode code points at the filename limit', () => fixture(async store => {
+  const title = 'a'.repeat(79) + '🎮';
+  const { projects: [project] } = await importProjects(store, 'unicode-source', native(title + '/'), pluginRoot);
+  const exported = await projectArchive(store, { action: 'export', requestId: 'unicode-export', projectIds: [project.projectId] }, pluginRoot);
+  assert.ok('archivePath' in exported);
+  assert.equal(exported.filename, title + '.zip');
+  const http = transport(store, { runtimeRoot: pluginRoot });
+  const response = await http(exported.downloadUrl);
+  assert.equal(response.status, 200);
+  assert.ok(response.headers.get('content-disposition')?.includes(encodeURIComponent(title + '.zip')));
+  assert.deepEqual(Buffer.from(await response.arrayBuffer()), await readFile(exported.archivePath));
+}, false));
+
 test('native HyperFrames composition folders may omit a marker config and receive defaults', () => fixture(async store => {
   const markerless = zip([
     { name: 'index.html', data: Buffer.from(html) },
