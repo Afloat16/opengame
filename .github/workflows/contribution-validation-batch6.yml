@@ -1,0 +1,77 @@
+name: Validate contribution source batch 6
+on:
+  push:
+    branches: [validation/improvements-20261127-batch6]
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Verify PR ${{ matrix.pr }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - pr: 103
+            sha: '236aaa61b2d037a94385d9304d2928fa1a72a0ea'
+            tests: 'tests/game-inline-scripts.test.ts'
+          - pr: 104
+            sha: 'c4f202b76815edf71e1917007982f2be15e48e0d'
+            tests: 'tests/web-publish-pinned-assets.test.ts'
+          - pr: 105
+            sha: '537060b926ac33ccb210f795c5baf7b605d3242a'
+            tests: 'tests/game-simulation-terminal.test.ts'
+    env:
+      OPENMOTION_TELEMETRY: '0'
+      OPENMOTION_AUTO_UPDATE: '0'
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - name: Checkout exact contribution commit
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: Afloat16/opengame
+          ref: ${{ matrix.sha }}
+          fetch-depth: 1
+          lfs: false
+          persist-credentials: false
+      - name: Verify source identity
+        env:
+          EXPECTED_SOURCE_SHA: ${{ matrix.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          git show --no-patch --format=fuller HEAD
+      - name: Setup repository-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check source
+        run: npm run check
+      - name: Check backend types
+        run: npm run typecheck:backend
+      - name: Check Studio types
+        run: npm run typecheck:studio
+      - name: Build Studio
+        run: npm run build:studio
+      - name: Run contribution regressions
+        env:
+          REGRESSION_FILES: ${{ matrix.tests }}
+        run: |
+          read -r -a regression_files <<< "$REGRESSION_FILES"
+          node --experimental-strip-types --test "${regression_files[@]}"
+      - name: Check actual HTML parser integration
+        if: matrix.pr == 103
+        run: node --experimental-strip-types --test --test-name-pattern '^H1:' tests/game-harness-generalization.test.ts
+      - name: Run existing bundle and publication integration
+        if: matrix.pr == 104
+        run: node --experimental-strip-types --test --test-name-pattern '^buildPublishBundle and WebPublishService' tests/web-publish.test.ts
+      - name: Run existing deterministic simulation integration
+        if: matrix.pr == 105
+        run: node --experimental-strip-types --test --test-name-pattern '^simulation is deterministic|^simulation validates route bounds' tests/game-projects.test.ts
+      - name: Verify tracked source stayed unchanged
+        run: git diff --exit-code
