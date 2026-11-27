@@ -151,3 +151,47 @@ test('a failed refresh preserves the saved publication', async t => {
   assert.deepEqual(refreshed.active, original);
   assert.deepEqual(await data.read(), original);
 });
+
+
+for (const kind of ['game', 'design'] as const) {
+  test('timestamp-free legacy ' + kind + ' publications refresh and migrate', async t => {
+    const root = await mkdtemp(path.join(os.tmpdir(), 'web-publish-legacy-refresh-'));
+    t.after(() => rm(root, { recursive: true, force: true }));
+    const legacyKind = kind + '-project';
+    const id = 'legacy-refresh';
+    const legacy = path.join(root, 'cloud-shares', legacyKind + '__' + Buffer.from(legacyKind + ':' + id).toString('base64url') + '.json');
+    await mkdir(path.dirname(legacy), { recursive: true });
+    await atomicJson(legacy, {
+      kind: legacyKind, projectId: id, cloudProjectId: 'cloud-project',
+      workspaceId: 'workspace', ownerMemberId: 'member',
+      sourceFileId: 'source', sourceKey: 'source-key', resourceId: 'resource',
+      slug: 'shared-link', versionId: 'version-1', status: 'active',
+      url: 'https://example.test/artifact/cloud-project/shared-link',
+    });
+    let clock = 1_000;
+    t.mock.method(Date, 'now', () => ++clock);
+    const service = new WebPublishService(root, account(async () => JSON.stringify({ status: 'stopped' })));
+    const result = await service.status({ kind, id, entryPath: 'index.html' }, { refresh: true });
+    assert.equal(result.active?.status, 'stopped');
+    const saved = JSON.parse(await readFile(path.join(root, 'web-publications', kind + '--' + id + '.json'), 'utf8')).publications['index.html'];
+    assert.equal(saved.status, 'stopped');
+    assert.ok(saved.updatedAt > saved.publishedAt);
+    assert.deepEqual(result.active, saved);
+  });
+}
+
+test('a delayed status response preserves a persisted timestamp-only publication change', async t => {
+  const data = await fixture(t);
+  const requested = deferred<void>(), response = deferred<string>();
+  const service = new WebPublishService(data.root, account(async () => {
+    requested.resolve();
+    return response.promise;
+  }));
+  const reading = service.status(target, { refresh: true });
+  await requested.promise;
+  const newer = publication({ publishedAt: 2, updatedAt: 2 });
+  await data.save(newer);
+  response.resolve(JSON.stringify({ status: 'stopped' }));
+  assert.deepEqual((await reading).active, newer);
+  assert.deepEqual(await data.read(), newer);
+});
