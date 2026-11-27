@@ -211,7 +211,7 @@ async function inspectLocalModuleGraph(
       const fromUrl = new URL(playRoot + fromPath.split('/').map(encodeURIComponent).join('/'), 'http://game.local');
       const url = new URL(specifier, fromUrl);
       if (!url.pathname.startsWith(playRoot)) throw new GameError('Module URL leaves this game');
-      resolved = url.pathname.slice(playRoot.length).split('/').map(decodeURIComponent).join('/');
+      resolved = url.pathname.slice(playRoot.length).split('/').filter(Boolean).map(decodeURIComponent).join('/');
       if (resolved === 'logic.js') importsLogic = true;
       if (/^vendor\/(?:three\.module(?:\.min)?|GLTFLoader|SkeletonUtils|HumanoidRigController)\.js$/i.test(resolved)) importsThree = true;
       const target = await safeFile(dir, resolved);

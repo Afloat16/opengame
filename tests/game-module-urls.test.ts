@@ -34,11 +34,14 @@ async function fixture(t: TestContext, files: { path: string; content: string }[
   return { workspace, service, id: game.id };
 }
 
-test('validation accepts the same encoded module path served by the game endpoint', async t => {
+for (const [specifier, filename] of [
+  ['./first%20level.js?version=1#start', 'src/first level.js'],
+  ['./a//b.js', 'src/a/b.js'],
+]) test(`validation accepts the module URL ${specifier} served by the game endpoint`, async t => {
   const source = 'export const name = "First level";';
   const { workspace, service, id } = await fixture(t, [
-    { path: 'src/main.js', content: 'import "./first%20level.js?version=1#start";' },
-    { path: 'src/first level.js', content: source },
+    { path: 'src/main.js', content: `import ${JSON.stringify(specifier)};` },
+    { path: filename, content: source },
   ]);
   const server = createServer((req: IncomingMessage, res: ServerResponse) => {
     void gameHttp(req, res, new URL(req.url!, 'http://localhost'), workspace, async () => ({}), service.runtimeRoot);
@@ -50,7 +53,7 @@ test('validation accepts the same encoded module path served by the game endpoin
   await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
   const address = server.address();
   assert.ok(address && typeof address !== 'string');
-  const response = await fetch(`http://127.0.0.1:${address.port}/api/games/${id}/play/src/first%20level.js?version=1`);
+  const response = await fetch(new URL(specifier, `http://127.0.0.1:${address.port}/api/games/${id}/play/src/main.js`));
   assert.equal(response.status, 200);
   assert.equal(await response.text(), source);
   assert.deepEqual((await service.validate(id)).diagnostics, []);
@@ -85,13 +88,15 @@ test('module URL resolution keeps unsafe and malformed paths inside validation d
       'import "../../outside.js";',
       'import "./bad%ZZ.js";',
       'import "./nested%2f..%2fexisting.js";',
+      'import "./nested%2f%2fexisting.js";',
       'import "./%2e%2e/%2e%2e/outside.js";',
     ].join('\n') },
     { path: 'src/existing.js', content: 'export const value = 1;' },
+    { path: 'src/nested/existing.js', content: 'export const value = 2;' },
   ]);
   const result = await service.validate(id);
   assert.equal(result.passed, false);
-  assert.equal(result.diagnostics.length, 4);
+  assert.equal(result.diagnostics.length, 5);
   assert.ok(result.diagnostics.every(row => row.path === 'src/main.js' && /Imported module/.test(row.message)));
 });
 
