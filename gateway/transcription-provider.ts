@@ -1,18 +1,18 @@
 import { readFile, stat } from 'node:fs/promises';
 import { normalizeTranscript } from '../shared/transcript.ts';
 import { connectionBaseUrl } from './connections.ts';
-import { ProviderError, publicProviderFetch, readCappedText, type Fetcher } from './network.ts';
+import { ProviderError, publicProviderFetch, readCappedText, responseLimitMessage, type Fetcher } from './network.ts';
 
 export const TRANSCRIPTION_CHUNK_SECONDS = 600;
 const TRANSCRIPTION_TIMEOUT_MS = 10 * 60_000;
-const MAX_TRANSCRIPTION_RESPONSE_BYTES = 4_000_000;
+export const MAX_TRANSCRIPTION_RESPONSE_BYTES = 4_000_000;
 // Non-streaming ASR can be silent for longer than the ordinary provider idle limit.
 const transcriptionFetch: Fetcher = (url, init) => publicProviderFetch(url, init, TRANSCRIPTION_TIMEOUT_MS, MAX_TRANSCRIPTION_RESPONSE_BYTES);
 const formats = ['json', 'verbose_json', 'diarized_json'];
 function rethrowTranscriptionError(error: unknown): never {
   // Both capped paths use the shared limit message; preserve every other transport error.
-  if (error instanceof Error && error.message === `Provider response exceeds ${MAX_TRANSCRIPTION_RESPONSE_BYTES / 1024 / 1024} MB`) {
-    throw new Error('Transcription response exceeds 4 MB', { cause: error });
+  if (error instanceof Error && error.message === responseLimitMessage(MAX_TRANSCRIPTION_RESPONSE_BYTES)) {
+    throw new Error(`Transcription response exceeds ${MAX_TRANSCRIPTION_RESPONSE_BYTES / 1_000_000} MB`, { cause: error });
   }
   throw error;
 }

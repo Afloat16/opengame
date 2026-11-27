@@ -7,11 +7,13 @@ import path from 'node:path';
 import { PassThrough } from 'node:stream';
 import { setImmediate } from 'node:timers/promises';
 import test, { type TestContext } from 'node:test';
-import { transcribeAudio } from '../gateway/transcription-provider.ts';
+import { MAX_TRANSCRIPTION_RESPONSE_BYTES, transcribeAudio } from '../gateway/transcription-provider.ts';
 
-const LIMIT = 4_000_000;
-const CHUNK = 1_000_000;
-const LIMIT_MESSAGE = 'Transcription response exceeds 4 MB';
+import { responseLimitMessage } from '../gateway/network.ts';
+
+const LIMIT = MAX_TRANSCRIPTION_RESPONSE_BYTES;
+const CHUNK = LIMIT / 4;
+const LIMIT_MESSAGE = `Transcription response exceeds ${LIMIT / 1_000_000} MB`;
 
 async function inputFor(t: TestContext) {
   const dir = await mkdtemp(path.join(tmpdir(), 'asr-response-budget-'));
@@ -55,7 +57,7 @@ test('an oversized declared transcription body is cancelled before pulling it', 
 
 test('transcription limits UTF-8 bytes even when the JSON character count fits', async t => {
   const input = await inputFor(t);
-  const json = JSON.stringify({ text: 'Hello', padding: '界'.repeat(1_400_000) });
+  const json = JSON.stringify({ text: 'Hello', padding: '界'.repeat(Math.floor(LIMIT * 0.35)) });
   assert.ok(json.length < LIMIT && Buffer.byteLength(json) > LIMIT);
   await assert.rejects(transcribeAudio(input, async () => new Response(json)), { message: LIMIT_MESSAGE });
 });
@@ -103,7 +105,7 @@ test('the default HTTPS transport enforces the transcription budget while receiv
 
 test('an over-budget transport rejection uses the transcription message before a Response exists', async t => {
   const input = await inputFor(t);
-  const cause = new Error(`Provider response exceeds ${LIMIT / 1024 / 1024} MB`);
+  const cause = new Error(responseLimitMessage(LIMIT));
   let calls = 0;
   await assert.rejects(transcribeAudio(input, async () => { calls++; throw cause; }), {
     message: LIMIT_MESSAGE,
