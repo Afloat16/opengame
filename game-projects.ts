@@ -20,7 +20,7 @@ import { ensureRuntime, execute, pluginRoot, HYPERFRAMES_VERSION } from './hyper
 import { verificationBinaries } from './scripts/verify-export.ts';
 import type { Duplex } from 'node:stream';
 import { injectPreviewBridgeHtml, injectViewportGuardHtml, isValidPreviewBridgeToken } from './shared/preview-bridge.ts';
-import { attachmentDisposition } from './shared/http-header.ts';
+import { attachmentDisposition, parseSingleByteRange } from './shared/http-header.ts';
 import { HostedGameTemplates } from './shared/hosted-game-templates.ts';
 import { lfsPointer } from './shared/repository-template-catalog.ts';
 import { zip } from './scripts/zip.mjs';
@@ -2030,22 +2030,17 @@ export async function gameHttp(req: IncomingMessage, res: ServerResponse, url: U
       let status = 200, body = payload;
       // HEAD describes the complete representation. With no validator available,
       // an If-Range request must also receive the complete current representation.
-      const rangeHeader = req.headers.range;
-      if (req.method === 'GET' && rangeHeader && req.headers['if-range'] === undefined
+      const rangeHeader = req.headers?.range;
+      if (req.method === 'GET' && rangeHeader && req.headers?.['if-range'] === undefined
         && /^bytes=/i.test(rangeHeader) && !rangeHeader.includes(',')) {
-        const range = /^bytes=[ \t]*(\d*)-(\d*)[ \t]*$/i.exec(rangeHeader);
-        const first = range?.[1] ? Number(range[1]) : undefined;
-        const last = range?.[2] ? Number(range[2]) : undefined;
-        const start = first ?? Math.max(0, payload.length - (last ?? 0));
-        const end = first !== undefined && last !== undefined ? Math.min(last, payload.length - 1) : payload.length - 1;
-        if (!range || first === undefined && last === undefined
-          || first !== undefined && !Number.isSafeInteger(first)
-          || last !== undefined && !Number.isSafeInteger(last)
-          || start > end || start >= payload.length) {
+        const canonicalRange = rangeHeader.replace(/^bytes=[ \t]*/i, 'bytes=').replace(/[ \t]*$/, '');
+        const range = parseSingleByteRange(canonicalRange, payload.length);
+        if (!range) {
           res.writeHead(416, { ...originHeaders, 'Content-Range': `bytes */${payload.length}`, 'Content-Length': 0, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' });
           res.end();
           return true;
         }
+        const { start, end } = range;
         status = 206;
         body = payload.subarray(start, end + 1);
         res.setHeader('Content-Range', `bytes ${start}-${end}/${payload.length}`);
