@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict';
-import { mkdtemp, readFile, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test, { type TestContext } from 'node:test';
 import { TriggerService, type TriggerExecutionHost } from '../gateway/triggers.ts';
+import type { TriggerRunRecord } from '../shared/triggers.ts';
 
 function gate() {
   let resolve!: () => void;
@@ -127,4 +128,63 @@ test('a failed final run releases its schedule for the next tick', async t => {
   const { runs } = await service.runs(trigger.id);
   assert.equal(runs.filter(run => run.state === 'failed').length, 1);
   assert.equal(runs.filter(run => run.state === 'completed').length, 1);
+});
+
+
+for (const source of ['manual', 'mcp'] as const) {
+  test('a ' + source + ' run blocks a due schedule while its initial record is being appended', { timeout: 10_000 }, async t => {
+    const service = await fixture(t);
+    const trigger = await schedule(service);
+    const appending = gate(), finishAppend = gate();
+    // Defer only the persistence boundary; all registry and run records still use real files.
+    const persistence = service as unknown as { appendRun(record: TriggerRunRecord): Promise<void> };
+    const appendRun = persistence.appendRun.bind(service);
+    let paused = false;
+    t.mock.method(persistence, 'appendRun', async (record: TriggerRunRecord) => {
+      if (!paused && record.source === source && record.state === 'running') {
+        paused = true;
+        appending.resolve();
+        await finishAppend.promise;
+      }
+      await appendRun(record);
+    });
+    let calls = 0;
+    const execution = host(async () => { calls++; return { ok: true }; });
+    const running = service.fire(trigger.id, {}, execution, source);
+    await appending.promise;
+    try {
+      assert.equal(calls, 0);
+      assert.equal(await service.tick(execution, Date.now() + 120_000), 0);
+      assert.equal(calls, 0, 'a scheduled target cannot overtake an invocation waiting to be persisted');
+      assert.deepEqual((await service.runs(trigger.id)).runs, []);
+    } finally {
+      finishAppend.resolve();
+      await running;
+    }
+    assert.equal(calls, 1);
+    assert.equal(await service.tick(execution, Date.now() + 120_000), 1);
+    assert.equal(calls, 2);
+    assert.equal((await service.get(trigger.id)).runCount, 2);
+    assert.deepEqual((await service.runs(trigger.id)).runs.map(run => run.source).sort(), [source, 'schedule'].sort());
+  });
+}
+
+test('an initial run append failure releases the schedule without invoking its target', async t => {
+  const service = await fixture(t);
+  const trigger = await schedule(service);
+  let calls = 0;
+  const execution = host(async () => { calls++; return { ok: true }; });
+  // A directory cannot be replaced by the atomic run-record file.
+  await mkdir(service.runsFile);
+  try {
+    await assert.rejects(service.fire(trigger.id, {}, execution));
+    assert.equal(calls, 0);
+    assert.equal((await service.get(trigger.id)).runCount, 0);
+  } finally {
+    await rm(service.runsFile, { recursive: true, force: true });
+  }
+  assert.equal(await service.tick(execution, Date.now() + 120_000), 1);
+  assert.equal(calls, 1);
+  assert.equal((await service.get(trigger.id)).runCount, 1);
+  assert.equal((await service.runs(trigger.id)).runs[0].state, 'completed');
 });

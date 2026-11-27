@@ -356,11 +356,11 @@ export class TriggerService {
       state: 'running',
       startedAt,
     };
-    await this.appendRun(run);
-    // Manual and MCP runs may overlap; scheduled ticks must wait for every active run.
+    // Manual and MCP runs may overlap; reserve activity before persistence can yield.
     this.runningTriggerCounts.set(trigger.id, (this.runningTriggerCounts.get(trigger.id) ?? 0) + 1);
 
     try {
+      await this.appendRun(run);
       const context = { payload, trigger: { id: trigger.id, name: trigger.name } };
       let output: unknown;
       let outputSummary = 'Completed';
