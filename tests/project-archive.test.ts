@@ -344,6 +344,8 @@ test('archive download repairs a copied title that already contains an unpaired 
   assert.equal(response.status, 200);
   assert.equal(exported.filename, copy.title.toWellFormed() + '.zip');
   const disposition = response.headers.get('content-disposition') ?? '';
-  assert.ok(disposition.includes("filename*=UTF-8''" + encodeURIComponent(exported.filename)));
+  const encoded = disposition.match(/filename\*=UTF-8''([^;]+)$/)?.[1];
+  assert.ok(encoded);
+  assert.equal(decodeURIComponent(encoded), exported.filename);
   assert.deepEqual(Buffer.from(await response.arrayBuffer()), await readFile(exported.archivePath));
 }, false));
