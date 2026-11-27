@@ -1612,7 +1612,7 @@ server.listen(port, '127.0.0.1', () => {
         }
       }
       if(req.method==='GET'&&url.pathname==='/favicon.ico'){res.writeHead(204);res.end();return;}
-      if(req.method!=='GET'||!url.pathname.startsWith(`/api/games/${id}/play/`)){res.writeHead(404);res.end();return;}
+      if(!['GET','HEAD'].includes(req.method??'')||!url.pathname.startsWith(`/api/games/${id}/play/`)){res.writeHead(404);res.end();return;}
       void gameHttp(req,res,url,path.dirname(this.root),async()=>({})).catch(()=>{res.writeHead(500);res.end();});
     });
     const closeRooms=attachGameRooms(server,path.dirname(this.root));
