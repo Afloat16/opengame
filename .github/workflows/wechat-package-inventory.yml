@@ -1,0 +1,175 @@
+name: Inspect pinned WeChat package inventory
+on:
+  push:
+    branches: [validation/wechat-package-inventory-20261127]
+permissions:
+  contents: read
+jobs:
+  inventory:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    env:
+      GIT_LFS_SKIP_SMUDGE: '1'
+      OPENMOTION_TELEMETRY: '0'
+      OPENMOTION_AUTO_UPDATE: '0'
+    steps:
+      - uses: actions/checkout@v6.0.2
+        with:
+          repository: Afloat16/opengame
+          ref: '4c03f373b2237f712e50ec7ce7f319b4dd8b3dc3'
+          fetch-depth: 1
+          persist-credentials: false
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+      - name: Install exact dependency lock without lifecycle scripts
+        run: npm ci --ignore-scripts --no-audit --no-fund
+      - name: Inspect SDK inventory without network or publication
+        run: |
+          node - "$GITHUB_WORKSPACE" <<'PROBE'
+          /*
+           * Offline diagnostic only. No preview/upload/attr/compile API is called.
+           * Exact SDK pin: nexu-io/opengame package.json and package-lock.json both
+           * require miniprogram-ci 2.1.31 (local tested base 40596a9fc278310ef303715654520b02fb98977d).
+           *
+           * Run on a fresh runner with synthetic files and an isolated dependency prefix:
+           *   npm install --prefix "$RUNNER_TEMP/og-wechat-probe" --ignore-scripts --no-audit --no-fund --package-lock=false miniprogram-ci@2.1.31
+           *   node submission-records/og-wechat-package-probe.cjs "$RUNNER_TEMP/og-wechat-probe"
+           *
+           * Project/getFileList contract: official wechat-miniprogram/miniprogram-ci-dist
+           * README.md. Current official dist/project/ciProject.js uses glob with dot:true;
+           * this probe verifies behavior of OpenGame's exact older pin, not latest SDK.
+           */
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const os = require('node:os');
+          const path = require('node:path');
+          const { createRequire } = require('node:module');
+          
+          const dependencyRoot = path.resolve(process.argv[2] || process.cwd());
+          const sdkRequire = createRequire(path.join(dependencyRoot, 'package.json'));
+          const sdkPackage = sdkRequire.resolve('miniprogram-ci/package.json');
+          const sdkRoot = path.dirname(sdkPackage);
+          const sdkLocalRequire = createRequire(sdkPackage);
+          const version = sdkRequire('miniprogram-ci/package.json').version;
+          assert.equal(version, '2.1.31', 'Probe must run against the version pinned by OpenGame');
+          
+          // Refuse any unexpected network use by SDK initialization, before importing it.
+          const denyNetwork = () => { throw new Error('Unexpected network access in offline package probe'); };
+          for (const module of ['node:http', 'node:https']) {
+            const api = require(module);
+            api.request = denyNetwork;
+            api.get = denyNetwork;
+          }
+          globalThis.fetch = denyNetwork;
+          const net = require('node:net');
+          net.Socket.prototype.connect = denyNetwork;
+          
+          const ci = sdkRequire('miniprogram-ci');
+          // Bounded excerpts from this exact installed SDK and its actual matcher. These
+          // are dependency sources only, never credentials or user project files.
+          const excerpt = (filename, token, before = 150, after = 1800) => {
+            const source = fs.readFileSync(filename, 'utf8');
+            const start = source.indexOf(token);
+            return { file: path.relative(dependencyRoot, filename), token,
+              excerpt: start < 0 ? 'TOKEN_NOT_FOUND' : source.slice(Math.max(0, start - before), start + after) };
+          };
+          const globRequire = createRequire(sdkLocalRequire.resolve('glob/package.json'));
+          const globRoot = path.dirname(globRequire.resolve('glob/package.json'));
+          const minimatch = sdkLocalRequire('minimatch');
+          console.log(JSON.stringify({
+            sdkVersion: version,
+            globVersion: sdkLocalRequire('glob/package.json').version,
+            minimatchVersion: sdkLocalRequire('minimatch/package.json').version,
+            getDefaultIgnores: String(sdkLocalRequire('./dist/config/config.js').getDefaultIgnores).slice(0, 6000),
+            implementation: [
+              excerpt(path.join(sdkRoot, 'dist/project/ciProject.js'), 'updateFileAndDirs()'),
+              excerpt(path.join(sdkRoot, 'dist/config/config.js'), 'getDefaultIgnores', 0, 3500),
+              excerpt(path.join(globRoot, 'common.js'), 'function setupIgnores', 0, 1000),
+              excerpt(path.join(globRoot, 'common.js'), 'function childrenIgnored', 0, 1000),
+            ],
+            matcherRootChecks: ['**/.*', '**/.?*', '**/.[!.]*', '**/..?*'].map(pattern => ({
+              pattern, dot: minimatch('.', pattern, { dot: true }),
+              empty: minimatch('', pattern, { dot: true }),
+              hidden: minimatch('.env', pattern, { dot: true }),
+              doubleDot: minimatch('..secrets', pattern, { dot: true }),
+            })),
+          }, null, 2));
+          const root = fs.mkdtempSync(path.join(os.tmpdir(), 'og-wechat-package-probe-'));
+          const fixture = {
+            'game.js': 'console.log("offline package probe");',
+            'game.json': '{}',
+            'assets/visible.txt': 'public fixture',
+            'assets.v1/visible.txt': 'public dotted directory',
+            'assets/file.with.dots.txt': 'public dotted filename',
+            '.env': 'SYNTHETIC_PROBE_VALUE=not-a-credential',
+            '.x': 'one-character hidden filename',
+            '..secrets/token.txt': 'double-dot hidden directory',
+            '.../token.txt': 'multiple-dot hidden directory',
+            '.hidden/config.json': '{"synthetic":true}',
+            'assets/.private/token.txt': 'synthetic fixture only',
+            'assets/.nested/.inner/file.txt': 'synthetic nested fixture',
+            'node_modules/example/index.js': '// excluded root dependency',
+            'assets/node_modules/example/index.js': '// excluded nested dependency',
+            'mock-probe.js': '// excluded development mock',
+            'port-report.json': '{"smokeTest":"passed"}',
+          };
+          const baselineIgnores = ['node_modules/**/*', 'mock-*.js', 'port-report.json'];
+          const candidates = {
+            baseline: baselineIgnores,
+            'naive-dot-glob': [...baselineIgnores, '**/.*', '**/.*/**'],
+            'dot-entry-only': [...baselineIgnores, '**/.*'],
+            'nonempty-dot-entry-only': [...baselineIgnores, '**/.?*'],
+            'nonempty-dot-glob': [...baselineIgnores, '**/.?*', '**/.?*/**'],
+            'explicit-dot-prefix-glob': [...baselineIgnores, '**/.[!.]*', '**/.[!.]*/**', '**/..?*', '**/..?*/**'],
+          };
+          const expectedFiles = ['assets/visible.txt', 'assets.v1/visible.txt', 'assets/file.with.dots.txt', 'game.js', 'game.json'].sort();
+          
+          try {
+            for (const [name, content] of Object.entries(fixture)) {
+              const filename = path.join(root, name);
+              fs.mkdirSync(path.dirname(filename), { recursive: true });
+              fs.writeFileSync(filename, content);
+            }
+            const inspect = ignores => {
+              const project = new ci.Project({
+                appid: 'wx0123456789abcdef', type: 'miniGame', projectPath: root,
+                privateKey: 'synthetic-offline-probe-no-signing-key', ignores,
+              });
+              const files = project.getFileList('', '').sort();
+              return { files, bytes: files.reduce((sum, name) => sum + fs.statSync(path.join(root, name)).size, 0) };
+            };
+            const isHidden = name => name.split('/').some(segment => segment.startsWith('.'));
+            const results = [];
+            for (const [name, ignores] of Object.entries(candidates)) {
+              try {
+                const inventory = inspect(ignores);
+                const result = { name, ignores, ...inventory,
+                  hiddenFiles: inventory.files.filter(isHidden),
+                  dependencies: inventory.files.filter(file => file.split('/').includes('node_modules')),
+                  missingPublicFiles: expectedFiles.filter(file => !inventory.files.includes(file)),
+                  matchesExpected: JSON.stringify(inventory.files) === JSON.stringify(expectedFiles),
+                };
+                results.push(result);
+                console.log(JSON.stringify(result, null, 2));
+              } catch (error) {
+                results.push({ name, error: String(error), matchesExpected: false });
+                console.log(JSON.stringify(results.at(-1), null, 2));
+              }
+            }
+            const baseline = results.find(result => result.name === 'baseline');
+            assert.equal(baseline.missingPublicFiles.length, 0, 'Baseline must retain public files');
+            assert.ok(baseline.hiddenFiles.length > 0, 'Expected hidden-file reproduction');
+            const passingCandidates = results.filter(result => result.matchesExpected).map(result => result.name);
+            console.log(JSON.stringify({ sdkVersion: version, fixtureFiles: Object.keys(fixture).sort(), expectedFiles, passingCandidates }, null, 2));
+            assert.ok(passingCandidates.length > 0, 'No safe ignore pattern found; inspect dependency excerpts');
+          } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+          }
+          
+          // SDK module initialization may retain its own worker manager; this diagnostic
+          // performs only synchronous file inventory and has completed all cleanup.
+          process.exit(0);
+          
+          PROBE
