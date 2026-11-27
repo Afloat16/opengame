@@ -1,0 +1,110 @@
+name: Validate contribution source batch 10
+on:
+  push:
+    branches: [validation/improvements-20261127-batch10]
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Verify ${{ matrix.label }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - label: publication-refresh
+            sha: '4a55a8a563bfabaa50c4bfbb7b41744f84644d70'
+            tests: 'tests/web-publish-refresh.test.ts tests/web-publish.test.ts'
+          - label: native-zip-crc
+            sha: 'f7b3c1e520a34a58c24be37c5a18846102704172'
+            tests: 'tests/zip.test.ts tests/project-archive.test.ts'
+          - label: portable-filenames
+            sha: 'e420e2fc9ec54cbb8ff17bf62bc05d0dfc76784f'
+            tests: 'tests/project-name.test.ts tests/project-archive.test.ts'
+          - label: unicode-archive-name
+            sha: 'a646ddeaf6c9b95b5b465ebfd1b7a2a49bc06f9d'
+            tests: 'tests/project-archive.test.ts'
+          - label: subtitle-line-endings
+            sha: '65f67ffcfb903d3116f341eeeb25b513105107c5'
+            tests: 'tests/transcript-line-endings.test.ts tests/transcription.test.ts tests/transcription-transport.test.ts'
+          - label: trigger-overlap
+            sha: '3ff60a24204d476fbdc72e92d9e10057494ec9f1'
+            tests: 'tests/trigger-concurrency.test.ts tests/triggers.test.ts'
+    env:
+      OPENMOTION_TELEMETRY: '0'
+      OPENMOTION_AUTO_UPDATE: '0'
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - name: Checkout exact contribution commit
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: Afloat16/opengame
+          ref: ${{ matrix.sha }}
+          fetch-depth: 3
+          lfs: false
+          persist-credentials: false
+      - name: Verify source identity
+        env:
+          EXPECTED_SOURCE_SHA: ${{ matrix.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          git show --no-patch --format=fuller HEAD
+      - name: Setup repository-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Verify trigger regressions fail before the fix
+        if: matrix.label == 'trigger-overlap'
+        run: |
+          git show accb33621b9525815a2e4c1d693ad3e3a95ccf1d:gateway/triggers.ts > gateway/triggers.ts
+          set +e
+          node --experimental-strip-types --test --test-reporter=tap tests/trigger-concurrency.test.ts > "$RUNNER_TEMP/trigger-baseline.tap" 2>&1
+          result=$?
+          set -e
+          git restore --source=HEAD -- gateway/triggers.ts
+          cat "$RUNNER_TEMP/trigger-baseline.tap"
+          test "$result" -eq 1
+          grep -Eq '^# fail 2$' "$RUNNER_TEMP/trigger-baseline.tap"
+          grep -Eq '^# pass 2$' "$RUNNER_TEMP/trigger-baseline.tap"
+      - name: Install integration media tools
+        if: matrix.label == 'subtitle-line-endings'
+        run: |
+          if ! command -v ffprobe >/dev/null || ! command -v ffmpeg >/dev/null; then
+            apt_options=(-o Acquire::Retries=2 -o Acquire::http::Timeout=30 -o Acquire::https::Timeout=30)
+            if ! sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg; then
+              sudo apt-get "${apt_options[@]}" update
+              sudo apt-get "${apt_options[@]}" install -y --no-install-recommends ffmpeg
+            fi
+          fi
+          ffmpeg -version
+          ffprobe -version
+      - name: Run contribution and existing regressions
+        env:
+          REGRESSION_FILES: ${{ matrix.tests }}
+        run: |
+          read -r -a regression_files <<< "$REGRESSION_FILES"
+          node --experimental-strip-types --test "${regression_files[@]}"
+      - name: Check source policy and suite registration
+        run: |
+          npm run templates:check -- --final-tree
+          npm run storage:check -- --final-tree
+          node --test tests/repository-storage.test.ts tests/media-transfer.test.ts
+          node --test tests/template-library.test.ts tests/ci-scope.test.mjs
+          node --test tests/publish-template-catalog.test.mjs
+          node --test --test-skip-pattern='^the scanner opens the nested application' tests/release-scan.test.mjs
+      - name: Check source
+        run: npm run check
+      - name: Check backend types
+        run: npm run typecheck:backend
+      - name: Check Studio types
+        run: npm run typecheck:studio
+      - name: Build Studio
+        run: npm run build:studio
+      - name: Verify tracked source stayed unchanged
+        run: git diff --exit-code
