@@ -1,0 +1,104 @@
+name: Validate contribution source
+on:
+  push:
+    branches: [validation/improvements-20261127-batch1]
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Verify PR ${{ matrix.pr }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - pr: 70
+            sha: '1d222abd976e5f768b0f851c0f4e43c2c8eae1dd'
+            tests: 'tests/game-mutation-lock.test.ts tests/process-lock.test.ts'
+          - pr: 71
+            sha: '973ead8d275dbac247690f93b48bcdc01bfd5cb8'
+            tests: 'tests/game-template-index-retry.test.ts'
+          - pr: 72
+            sha: 'aca8f882a63233b42fb128a6275559b1e9abfdb9'
+            tests: 'tests/game-lfs-cache-integrity.test.ts'
+          - pr: 74
+            sha: '5b29a26177e604dd6b91f724e5f7ae0ce6b43429'
+            tests: 'tests/game-asset-range.test.ts tests/http-byte-range.test.ts tests/local-game-preview.test.ts'
+          - pr: 76
+            sha: '6f098fa8f9d74746bc1e1aa734a054a691771fe0'
+            tests: 'tests/game-runtime-exports.test.ts'
+          - pr: 77
+            sha: 'ec6d1c603dddf29169bd1d2eadcc0022d1d5e79c'
+            tests: 'tests/game-runtime-state.test.ts'
+          - pr: 79
+            sha: '4775a541d94dcef572938902e7ef14fa5f1ac81a'
+            tests: 'tests/game-room-shutdown.test.ts'
+          - pr: 82
+            sha: 'dac90713eae43f5fb289fdb538c3f4a94cc5c261'
+            tests: 'tests/game-file-read.test.ts'
+          - pr: 84
+            sha: 'c007cc78dc51cc125f69296ce5656e0b3722a5bd'
+            tests: 'tests/game-delete-preflight.test.ts'
+          - pr: 85
+            sha: '128b9f1b9d506edb8b56b83ebf55c40ffdb7e8ec'
+            tests: 'tests/game-catalog-state.test.ts'
+          - pr: 86
+            sha: '3f5e29c4831be7aa38bd69a2776cba7dfe2a7f69'
+            tests: 'tests/game-room-backpressure.test.ts'
+          - pr: 87
+            sha: 'd055c27e68465037ba3c79021ad9aea8b0a7ce8b'
+            tests: 'tests/game-browser-cleanup.test.ts'
+          - pr: 88
+            sha: 'b10a5e038e8d8f9464ba2bce632876c4da6c6cbd'
+            tests: 'tests/game-export-budget.test.ts'
+          - pr: 89
+            sha: '50d5285d5f8cc38f1a5544fde21abee1738c080f'
+            tests: 'tests/game-export-launcher.test.ts'
+          - pr: 90
+            sha: '1d09ffa3ec6f7ba09ba53178f241b5102815f706'
+            tests: 'tests/game-browser-hooks.test.ts'
+    env:
+      OPENMOTION_TELEMETRY: '0'
+      OPENMOTION_AUTO_UPDATE: '0'
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - name: Checkout exact contribution commit
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: Afloat16/opengame
+          ref: ${{ matrix.sha }}
+          fetch-depth: 1
+          lfs: false
+          persist-credentials: false
+      - name: Verify source identity
+        env:
+          EXPECTED_SOURCE_SHA: ${{ matrix.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          git show --no-patch --format=fuller HEAD
+      - name: Setup repository-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check source
+        run: npm run check
+      - name: Check backend types
+        run: npm run typecheck:backend
+      - name: Check Studio types
+        run: npm run typecheck:studio
+      - name: Build Studio
+        run: npm run build:studio
+      - name: Run contribution regressions
+        env:
+          REGRESSION_FILES: ${{ matrix.tests }}
+        run: |
+          read -r -a regression_files <<< "$REGRESSION_FILES"
+          node --experimental-strip-types --test "${regression_files[@]}"
+      - name: Verify tracked source stayed unchanged
+        run: git diff --exit-code
