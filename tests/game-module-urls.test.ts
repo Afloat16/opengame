@@ -6,13 +6,15 @@ import path from 'node:path';
 import test, { type TestContext } from 'node:test';
 import { GameProjects, gameHttp } from '../game-projects.ts';
 
-async function fixture(t: TestContext, files: { path: string; content: string }[], entrySrc = './src/main.js') {
-  const entry = `<canvas></canvas><script type="module" src="${entrySrc}"></script>`;
+async function fixture(t: TestContext, files: { path: string; content: string }[], entrySrc = './src/main.js', options: { baseHref?: string; inlineSource?: string } = {}) {
+  const entry = (options.baseHref === undefined ? '' : `<base href="${options.baseHref}">`) + '<canvas></canvas>'
+    + (entrySrc ? `<script type="module" src="${entrySrc}"></script>` : '')
+    + (options.inlineSource ? `<script type="module">${options.inlineSource}</script>` : '');
   const workspace = await mkdtemp(path.join(tmpdir(), 'game-module-urls-'));
   t.after(() => rm(workspace, { recursive: true, force: true }));
   const service = new GameProjects(workspace, path.join(workspace, 'templates'), path.join(workspace, 'kits'));
-  // HTML parsing is not under test: this exact fixture always has one external
-  // module. Exercise the real module parser, file resolution and public service.
+  // HTML parsing is not under test: expose only the nodes authored above.
+  // Exercise the real module parser, file resolution and public service.
   service.runtimeRoot = path.join(workspace, 'runtime');
   const packages = path.join(service.runtimeRoot, 'node_modules');
   await mkdir(path.join(packages, '@hyperframes/parsers'), { recursive: true });
@@ -24,8 +26,14 @@ async function fixture(t: TestContext, files: { path: string; content: string }[
       if (source !== ${JSON.stringify(entry)}) throw Error('Unexpected HTML fixture');
       const script = { localName: 'script', closest: () => null,
         getAttribute: name => ({ type: 'module', src: ${JSON.stringify(entrySrc)} })[name] ?? null };
-      return { document: { querySelector: () => null,
-        querySelectorAll: selector => selector === 'script[src], link[href]' ? [script] : [] } };
+      const inline = { localName: 'script', closest: () => null,
+        getAttribute: name => name === 'type' ? 'module' : null, textContent: ${JSON.stringify(options.inlineSource ?? '')} };
+      const baseHref = ${JSON.stringify(options.baseHref ?? null)};
+      return { document: {
+        querySelector: selector => selector === 'base[href]' && baseHref !== null ? { getAttribute: () => baseHref } : null,
+        querySelectorAll: selector => selector === 'script[src], link[href]' ? (${JSON.stringify(Boolean(entrySrc))} ? [script] : [])
+          : selector === 'script:not([src])' && inline.textContent ? [inline] : [],
+      } };
     };
   `);
   const { game } = await service.create({ prompt: 'Module URLs', multiplayer: false, genre: 'racing', style: null, setting: null });
@@ -171,5 +179,91 @@ test('entry URL decoding still rejects encoded traversal and empty segments', as
     const result = await service.validate(id);
     assert.equal(result.passed, false);
     assert.ok(result.diagnostics.some(row => row.path === 'index.html' && /Referenced script not readable/.test(row.message)));
+  }
+});
+
+for (const [baseHref, specifier, filename] of [
+  ['./src/?version=1#chapter', './main.js', 'src/main.js'],
+  ['./src/nested%2Fbase.html', './c.js', 'src/c.js'],
+]) test(`inline imports resolve against the authored base ${baseHref}`, async t => {
+  const source = 'export const value = 1;';
+  const { workspace, service, id } = await fixture(t, [{ path: filename, content: source }], '', {
+    baseHref, inlineSource: `import ${JSON.stringify(specifier)};`,
+  });
+  const entry = await serve(t, workspace, service, id);
+  const response = await fetch(new URL(specifier, new URL(baseHref, entry)));
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), source);
+  assert.deepEqual((await service.validate(id)).diagnostics, []);
+  assert.equal((await service.publish(id)).game.status, 'published');
+});
+
+test('inline imports validate the base target instead of a same-named entry-directory file', async t => {
+  const { service, id } = await fixture(t, [
+    { path: 'main.js', content: 'export const decoy = 1;' },
+    { path: 'src/main.js', content: 'export const = ;' },
+  ], '', { baseHref: './src/', inlineSource: 'import "./main.js";' });
+  const result = await service.validate(id);
+  if (result.passed) {
+    const published = await service.publish(id);
+    assert.fail(`Broken base-resolved module passed validation and publication (${published.game.status})`);
+  }
+  assert.equal(result.passed, false);
+  assert.ok(result.diagnostics.some(row => row.path === 'src/main.js' && /JavaScript syntax error/.test(row.message)));
+  await assert.rejects(service.publish(id), /Game validation failed/);
+});
+
+test('remote inline bases retain host checks without local file lookups', async t => {
+  const { service, id } = await fixture(t, [], '', {
+    baseHref: 'https://cdn.jsdelivr.net/npm/example/', inlineSource: 'import "./main.js";',
+  });
+  assert.deepEqual((await service.validate(id)).diagnostics, []);
+  const blocked = await fixture(t, [], '', {
+    baseHref: 'https://untrusted.invalid/modules/', inlineSource: 'import "./main.js";',
+  });
+  const result = await blocked.service.validate(blocked.id);
+  assert.equal(result.passed, false);
+  assert.ok(result.diagnostics.some(row => row.path === 'index.html' && /External network host is not allowed: untrusted.invalid/.test(row.message)));
+});
+
+test('inline bases outside this game fail with an entry diagnostic', async t => {
+  for (const baseHref of ['../', 'mailto:example@example.com']) {
+    const { service, id } = await fixture(t, [{ path: 'main.js', content: 'export const decoy = 1;' }], '', {
+      baseHref, inlineSource: 'import "./main.js";',
+    });
+    const result = await service.validate(id);
+    assert.equal(result.passed, false, baseHref);
+    assert.ok(result.diagnostics.some(row => row.path === 'index.html' && /Imported module/.test(row.message)));
+  }
+});
+
+test('data and javascript base URLs retain the document fallback base', async t => {
+  for (const baseHref of ['data:text/html,example', 'javascript:void(0)']) {
+    const { service, id } = await fixture(t, [{ path: 'main.js', content: 'export const value = 1;' }], '', {
+      baseHref, inlineSource: 'import "./main.js";',
+    });
+    assert.deepEqual((await service.validate(id)).diagnostics, []);
+  }
+});
+
+test('root-relative module URLs inspect the same game files as the HTTP route', async t => {
+  const { workspace, service, id } = await fixture(t, [
+    { path: 'src/main.js', content: '' },
+    { path: 'src/broken.js', content: 'export const = ;' },
+  ]);
+  const urlPath = `/motion-api/games/${id}/play/src/broken.js`;
+  await service.write(id, [{ path: 'src/main.js', content: `import ${JSON.stringify(urlPath)};` }]);
+  const entry = await serve(t, workspace, service, id);
+  const response = await fetch(new URL(urlPath, entry));
+  assert.equal(response.status, 200);
+  assert.equal(await response.text(), 'export const = ;');
+  const result = await service.validate(id);
+  assert.equal(result.passed, false);
+  assert.ok(result.diagnostics.some(row => row.path === 'src/broken.js' && /JavaScript syntax error/.test(row.message)));
+  for (const unsafe of [`/motion-api/games/${id}/play/src/nested%2F..%2Fmain.js`, '/motion-api/games/another-game/play/main.js']) {
+    await service.write(id, [{ path: 'src/main.js', content: `import ${JSON.stringify(unsafe)};` }]);
+    const rejected = await service.validate(id);
+    assert.equal(rejected.passed, false);
+    assert.ok(rejected.diagnostics.some(row => row.path === 'src/main.js' && /Imported module not readable/.test(row.message)));
   }
 });

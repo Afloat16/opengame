@@ -84,7 +84,8 @@ async function gameEntryDependencies(html: string, dir: string, game: GameCard, 
   const playPath = `/games/${game.id}/play/`;
   const entry = new URL(`http://game.local/api${playPath}index.html`);
   const authoredBase = document.querySelector('base[href]')?.getAttribute('href');
-  const base = (authoredBase && URL.parse(authoredBase, entry)) || entry;
+  const candidateBase = authoredBase && URL.parse(authoredBase, entry);
+  const base = candidateBase && !['data:', 'javascript:'].includes(candidateBase.protocol) ? candidateBase : entry;
   const errors = new Set<string>();
   const entryScripts: string[] = []; // Encoded URL pathnames, not filesystem paths.
   const inlineScripts: string[] = [];
@@ -135,7 +136,7 @@ async function gameEntryDependencies(html: string, dir: string, game: GameCard, 
       errors.add(`Referenced ${kind} ${reason}: ${reference}`);
     }
   }
-  return { errors: [...errors], entryScripts, inlineScripts };
+  return { errors: [...errors], entryScripts, inlineScripts, inlineBaseUrl: base.href };
 }
 
 function extractStaticModuleSpecifiers(source: string): { specifiers: string[]; syntaxError?: string } {
@@ -186,6 +187,7 @@ async function inspectLocalModuleGraph(
   inlineScripts: string[],
   allowedHosts: string[],
   gameId: string,
+  inlineBaseUrl?: string,
 ): Promise<{ diagnostics: { path: string; message: string }[]; importsLogic: boolean; visitedModules: string[]; moduleSources: Map<string, string>; importsThree: boolean }> {
   const diagnostics: { path: string; message: string }[] = [];
   const visited = new Set<string>();
@@ -200,24 +202,19 @@ async function inspectLocalModuleGraph(
     return gameUrlFilePath(urlPath.slice(root.length));
   };
 
-  const enqueueSpecifier = async (fromUrlPath: string, specifier: string) => {
-    const fromPath = moduleFilePath(fromUrlPath);
+  const enqueueSpecifier = async (fromUrl: string, specifier: string, fromPath = moduleFilePath(fromUrl)) => {
     const clean = specifier.replace(/[?#].*$/, '');
-    if (/^(?:https?:)?\/\//i.test(clean)) {
-      try {
-        const host = new URL(clean.startsWith('//') ? 'https:' + clean : clean).hostname;
-        if (!allowedHosts.includes(host)) diagnostics.push({ path: fromPath, message: `External network host is not allowed: ${host}` });
-      } catch {
-        diagnostics.push({ path: fromPath, message: `Invalid external module URL: ${specifier}` });
-      }
-      return;
-    }
-    if (!clean.startsWith('./') && !clean.startsWith('../')) return;
+    const external = /^(?:https?:)?\/\//i.test(clean);
+    if (!external && !clean.startsWith('/') && !clean.startsWith('./') && !clean.startsWith('../')) return;
     let resolved: string | undefined;
     try {
       // Encoded separators and empty URL segments affect relative import bases.
       // Keep the URL identity through traversal; decode only for file access.
-      const url = new URL(specifier, 'http://game.local' + fromUrlPath);
+      const url = new URL(specifier, new URL(fromUrl, 'http://game.local'));
+      if (external || url.origin !== 'http://game.local') {
+        if (!allowedHosts.includes(url.hostname)) diagnostics.push({ path: fromPath, message: `External network host is not allowed: ${url.hostname}` });
+        return;
+      }
       resolved = moduleFilePath(url.pathname);
       if (resolved === 'logic.js') importsLogic = true;
       if (/^vendor\/(?:three\.module(?:\.min)?|GLTFLoader|SkeletonUtils|HumanoidRigController)\.js$/i.test(resolved)) importsThree = true;
@@ -230,6 +227,10 @@ async function inspectLocalModuleGraph(
         queue.push(url.pathname);
       }
     } catch (error) {
+      if (external) {
+        diagnostics.push({ path: fromPath, message: `Invalid external module URL: ${specifier}` });
+        return;
+      }
       if (resolved === 'logic.js') return; // logic.js missing is reported under path 'logic.js' below.
       const reason = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'not found' : 'not readable';
       diagnostics.push({ path: fromPath, message: `Imported module ${reason}: ${specifier}` });
@@ -238,7 +239,7 @@ async function inspectLocalModuleGraph(
 
   for (const script of inlineScripts) {
     const { specifiers } = extractStaticModuleSpecifiers(script);
-    for (const specifier of specifiers) await enqueueSpecifier(playRoots[0] + 'index.html', specifier);
+    for (const specifier of specifiers) await enqueueSpecifier(inlineBaseUrl ?? playRoots[0] + 'index.html', specifier, 'index.html');
   }
   for (const entry of entryScripts) {
     const relative = moduleFilePath(entry);
@@ -1312,12 +1313,14 @@ server.listen(port, '127.0.0.1', () => {
     if(!game.cover) warnings.push('No cover image is set; use openmotion_game_capture_cover.');
     let entryScripts: string[] = [];
     let inlineScripts: string[] = [];
+    let inlineBaseUrl: string | undefined;
     for (const relative of ['index.html','client.js']) try {
       const source = (await this.read(id, relative)).content;
       if (relative === 'index.html') {
         const deps = await gameEntryDependencies(source, dir, game, this.runtimeRoot);
         entryScripts = deps.entryScripts;
         inlineScripts = deps.inlineScripts;
+        inlineBaseUrl = deps.inlineBaseUrl;
         for (const message of deps.errors) {
           diagnostics.push({ path: relative, message });
         }
@@ -1327,7 +1330,7 @@ server.listen(port, '127.0.0.1', () => {
     } catch (e) {
       if (relative !== 'client.js' || (e as NodeJS.ErrnoException).code !== 'ENOENT') diagnostics.push({ path: relative, message: (e as Error).message });
     }
-    const moduleGraph = await inspectLocalModuleGraph(dir, entryScripts, inlineScripts, allowedHosts, id);
+    const moduleGraph = await inspectLocalModuleGraph(dir, entryScripts, inlineScripts, allowedHosts, id, inlineBaseUrl);
     diagnostics.push(...moduleGraph.diagnostics);
     if(game.multiplayer){
       let client='';try{client=(await this.read(id,'client.js')).content;}catch{}
