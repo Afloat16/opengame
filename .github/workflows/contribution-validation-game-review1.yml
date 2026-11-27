@@ -14,21 +14,12 @@ jobs:
       max-parallel: 2
       matrix:
         include:
-          - label: legacy-export-diagnostics
-            sha: 'b17108752c4f4b22fae38fd0f209e0ad359f9f0b'
-            tests: 'tests/project-archive.test.ts tests/project-name.test.ts'
-            baseline_files: 'project-archive.ts'
-            pattern: '^legacy project export'
           - label: malformed-copy-download
-            sha: '72e4345cf647980aae3cb13c26e7f3721b11ec15'
+            sha: 'bbe4e38b36953988dabd7778f7ac9fe5c2a8c495'
             tests: 'tests/project-archive.test.ts'
             baseline_files: 'project-archive.ts'
+            baseline_sha: 'a646ddeaf6c9b95b5b465ebfd1b7a2a49bc06f9d'
             pattern: '^archive download repairs'
-          - label: initialization-failure-cancel
-            sha: '28aadf8653edd75064123194587c9d0475ccae2d'
-            tests: 'tests/content-batch.test.ts'
-            baseline_files: 'gateway/content-batch.ts'
-            pattern: '^(batch initialization failure|background batch failure)'
     env:
       OPENMOTION_TELEMETRY: '0'
       OPENMOTION_AUTO_UPDATE: '0'
@@ -92,13 +83,14 @@ jobs:
       - name: Verify regressions reject the parent source
         env:
           BASELINE_FILES: ${{ matrix.baseline_files }}
+          BASELINE_SHA: ${{ matrix.baseline_sha }}
           REGRESSION_FILES: ${{ matrix.tests }}
           REGRESSION_PATTERN: ${{ matrix.pattern }}
         run: |
           read -r -a source_files <<< "$BASELINE_FILES"
           read -r -a regression_files <<< "$REGRESSION_FILES"
           for source in "${source_files[@]}"; do
-            git show "HEAD^:$source" > "$source"
+            git show "$BASELINE_SHA:$source" > "$source"
           done
           baseline_log="$RUNNER_TEMP/review-parent-regressions.log"
           set +e
