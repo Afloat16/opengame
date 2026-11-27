@@ -1,0 +1,162 @@
+name: Validate contribution source batch 2
+on:
+  push:
+    branches: [validation/improvements-20261127-batch2]
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Verify PR ${{ matrix.pr }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - pr: 92
+            sha: '675029f6fb3fd2a630001acf510c782ae28cb261'
+            tests: 'tests/game-validation-players.test.ts'
+          - pr: 93
+            sha: '1a1c8c965fc9ce48a3afa7c0c0411025d35f9728'
+            tests: 'tests/wechat-minigame.test.ts'
+    env:
+      OPENMOTION_TELEMETRY: '0'
+      OPENMOTION_AUTO_UPDATE: '0'
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - name: Checkout exact contribution commit
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: Afloat16/opengame
+          ref: ${{ matrix.sha }}
+          fetch-depth: 1
+          lfs: false
+          persist-credentials: false
+      - name: Verify source identity
+        env:
+          EXPECTED_SOURCE_SHA: ${{ matrix.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          git show --no-patch --format=fuller HEAD
+      - name: Setup repository-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check source
+        run: npm run check
+      - name: Check backend types
+        run: npm run typecheck:backend
+      - name: Check Studio types
+        run: npm run typecheck:studio
+      - name: Build Studio
+        run: npm run build:studio
+      - name: Run contribution regressions
+        env:
+          REGRESSION_FILES: ${{ matrix.tests }}
+        run: |
+          read -r -a regression_files <<< "$REGRESSION_FILES"
+          node --experimental-strip-types --test "${regression_files[@]}"
+      - name: Inspect pinned WeChat SDK package inventory offline
+        if: matrix.pr == 93
+        run: |
+          node - "$GITHUB_WORKSPACE" <<'PROBE'
+          /*
+           * Offline diagnostic only. No preview/upload/attr/compile API is called.
+           * Exact SDK pin: nexu-io/opengame package.json and package-lock.json both
+           * require miniprogram-ci 2.1.31 (local tested base 40596a9fc278310ef303715654520b02fb98977d).
+           *
+           * Run on a fresh runner with synthetic files and an isolated dependency prefix:
+           *   npm install --prefix "$RUNNER_TEMP/og-wechat-probe" --ignore-scripts --no-audit --no-fund --package-lock=false miniprogram-ci@2.1.31
+           *   node submission-records/og-wechat-package-probe.cjs "$RUNNER_TEMP/og-wechat-probe"
+           *
+           * Project/getFileList contract: official wechat-miniprogram/miniprogram-ci-dist
+           * README.md. Current official dist/project/ciProject.js uses glob with dot:true;
+           * this probe verifies behavior of OpenGame's exact older pin, not latest SDK.
+           */
+          const assert = require('node:assert/strict');
+          const fs = require('node:fs');
+          const os = require('node:os');
+          const path = require('node:path');
+          const { createRequire } = require('node:module');
+          
+          const dependencyRoot = path.resolve(process.argv[2] || process.cwd());
+          const sdkRequire = createRequire(path.join(dependencyRoot, 'package.json'));
+          const version = sdkRequire('miniprogram-ci/package.json').version;
+          assert.equal(version, '2.1.31', 'Probe must run against the version pinned by OpenGame');
+          
+          // Refuse any unexpected network use by SDK initialization, before importing it.
+          const denyNetwork = () => { throw new Error('Unexpected network access in offline package probe'); };
+          for (const module of ['node:http', 'node:https']) {
+            const api = require(module);
+            api.request = denyNetwork;
+            api.get = denyNetwork;
+          }
+          globalThis.fetch = denyNetwork;
+          const net = require('node:net');
+          net.Socket.prototype.connect = denyNetwork;
+          
+          const ci = sdkRequire('miniprogram-ci');
+          const root = fs.mkdtempSync(path.join(os.tmpdir(), 'og-wechat-package-probe-'));
+          const fixture = {
+            'game.js': 'console.log("offline package probe");',
+            'game.json': '{}',
+            'assets/visible.txt': 'public fixture',
+            '.env': 'SYNTHETIC_PROBE_VALUE=not-a-credential',
+            '.hidden/config.json': '{"synthetic":true}',
+            'assets/.private/token.txt': 'synthetic fixture only',
+            'assets/.nested/.inner/file.txt': 'synthetic nested fixture',
+            'node_modules/example/index.js': '// excluded root dependency',
+            'assets/node_modules/example/index.js': '// excluded nested dependency',
+            'mock-probe.js': '// excluded development mock',
+            'port-report.json': '{"smokeTest":"passed"}',
+          };
+          const baselineIgnores = ['node_modules/**/*', 'mock-*.js', 'port-report.json'];
+          const candidateIgnores = [...baselineIgnores, '**/.*', '**/.*/**', '**/node_modules/**/*'];
+          
+          try {
+            for (const [name, content] of Object.entries(fixture)) {
+              const filename = path.join(root, name);
+              fs.mkdirSync(path.dirname(filename), { recursive: true });
+              fs.writeFileSync(filename, content);
+            }
+            const inspect = ignores => {
+              const project = new ci.Project({
+                appid: 'wx0123456789abcdef', type: 'miniGame', projectPath: root,
+                privateKey: 'synthetic-offline-probe-no-signing-key', ignores,
+              });
+              const files = project.getFileList('', '').sort();
+              return { files, bytes: files.reduce((sum, name) => sum + fs.statSync(path.join(root, name)).size, 0) };
+            };
+            const baseline = inspect(baselineIgnores);
+            const candidate = inspect(candidateIgnores);
+            const isHidden = name => name.split('/').some(segment => segment.startsWith('.'));
+            const result = {
+              sdkVersion: version, baselineIgnores, candidateIgnores,
+              fixtureFiles: Object.keys(fixture).sort(), baseline, candidate,
+              baselineHiddenFiles: baseline.files.filter(isHidden),
+              baselineNestedDependencies: baseline.files.filter(name => name.startsWith('assets/node_modules/')),
+              candidateHiddenFiles: candidate.files.filter(isHidden),
+              candidateDependencies: candidate.files.filter(name => name.split('/').includes('node_modules')),
+            };
+            console.log(JSON.stringify(result, null, 2));
+            for (const name of ['game.js', 'game.json', 'assets/visible.txt']) {
+              assert.ok(baseline.files.includes(name), `Missing baseline public file: ${name}`);
+              assert.ok(candidate.files.includes(name), `Missing candidate public file: ${name}`);
+            }
+            assert.deepEqual(candidate.files, ['assets/visible.txt', 'game.js', 'game.json']);
+          } finally {
+            fs.rmSync(root, { recursive: true, force: true });
+          }
+          
+          // SDK module initialization may retain its own worker manager; this diagnostic
+          // performs only synchronous file inventory and has completed all cleanup.
+          process.exit(0);
+          PROBE
+      - name: Verify tracked source stayed unchanged
+        run: git diff --exit-code
+
