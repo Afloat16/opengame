@@ -26,6 +26,24 @@ test('export aliases can precede declarations and coexist with private names', (
   assert.deepEqual(runtime.view('player'), { score: 1 });
 });
 
+for (const declaration of ['export { limits as meta }', 'export {}']) {
+  for (const expression of ['(function () { limits.tickRate = 30 })()', '[30].forEach(value => { limits.tickRate = value })']) {
+    test(`${declaration} preserves the statement boundary before ${expression[0]}`, () => {
+      const source = starterLogic.replace(/^export const meta[^\n]*\n/, `
+        const limits = { minPlayers: 1, maxPlayers: 1 }
+        ${declaration}
+        ${expression}
+        ${declaration === 'export {}' ? 'export { limits as meta }' : ''}
+      `);
+      const runtime = new GameRuntime(source, 'export-statement-boundary');
+      assert.equal(runtime.meta.tickRate, 30);
+      runtime.setup(['player']);
+      runtime.apply('player', { type: 'score' });
+      assert.deepEqual(runtime.view('player'), { scores: { player: 1 } });
+    });
+  }
+}
+
 test('logic exports retain live bindings and calls remain unbound', () => {
   const source = `
     export { initialize as 'setup' };

@@ -1835,7 +1835,8 @@ export class GameRuntime {
           replacements.push({ start: node.start, end: decl.start, text: '' });
         } else {
           for (const specifier of node.specifiers) exports.set(specifier.exported.name ?? specifier.exported.value, specifier.local.name);
-          replacements.push({ start: node.start, end: node.end, text: '' });
+          // A removed export still separates surrounding statements in semicolon-free modules.
+          replacements.push({ start: node.start, end: node.end, text: ';' });
         }
       } else if (node.type === 'ExportDefaultDeclaration' || node.type === 'ImportDeclaration') throw new GameError('Use the six named logic exports');
     }
