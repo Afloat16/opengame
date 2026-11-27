@@ -1967,7 +1967,7 @@ export async function gameHttp(req: IncomingMessage, res: ServerResponse, url: U
       res.end(archive.data);
       return true;
     }
-    if (action === 'play' && req.method === 'GET') {
+    if (action === 'play' && ['GET', 'HEAD'].includes(req.method ?? '')) {
       const entry=!rest.length||(rest.length===1&&rest[0]==='index.html');
       if (options.isolatedPreview && !canUseIsolatedPreview(await service.get(id))) return json(404, { error: 'Game preview unavailable' });
       if (entry && req.headers?.['sec-fetch-dest'] === 'document' && options.localPreviewUrl && canUseIsolatedPreview(await service.get(id))) {
@@ -2027,7 +2027,32 @@ export async function gameHttp(req: IncomingMessage, res: ServerResponse, url: U
       const isolation = options.isolatedPreview ? "; object-src 'none'; base-uri 'none'" : '';
       const csp = `sandbox allow-scripts allow-forms allow-pointer-lock allow-popups allow-modals${sandbox}; default-src 'self' data: blob: ${playOrigins} ${assetOrigins}; connect-src 'self' blob: data: ${playOrigins} ${assetOrigins} ${sockets} ${gameCdnOrigins}; script-src 'self' 'unsafe-inline' 'unsafe-eval' ${playOrigins} ${gameCdnOrigins}; style-src 'self' 'unsafe-inline' ${playOrigins}; form-action 'none'; worker-src 'none'${isolation}`;
       const originHeaders = options.isolatedPreview ? { 'Origin-Agent-Cluster': '?1', 'Referrer-Policy': 'no-referrer' } : { 'Access-Control-Allow-Origin': '*' };
-      res.writeHead(200, { ...originHeaders, 'Content-Type':file.mime, 'Content-Length':payload.length, 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', ...(executable ? { 'Content-Security-Policy': csp } : {}) }); res.end(payload); return true;
+      let status = 200, body = payload;
+      // HEAD describes the complete representation. With no validator available,
+      // an If-Range request must also receive the complete current representation.
+      const rangeHeader = req.headers.range;
+      if (req.method === 'GET' && rangeHeader && req.headers['if-range'] === undefined
+        && /^bytes=/i.test(rangeHeader) && !rangeHeader.includes(',')) {
+        const range = /^bytes=[ \t]*(\d*)-(\d*)[ \t]*$/i.exec(rangeHeader);
+        const first = range?.[1] ? Number(range[1]) : undefined;
+        const last = range?.[2] ? Number(range[2]) : undefined;
+        const start = first ?? Math.max(0, payload.length - (last ?? 0));
+        const end = first !== undefined && last !== undefined ? Math.min(last, payload.length - 1) : payload.length - 1;
+        if (!range || first === undefined && last === undefined
+          || first !== undefined && !Number.isSafeInteger(first)
+          || last !== undefined && !Number.isSafeInteger(last)
+          || start > end || start >= payload.length) {
+          res.writeHead(416, { ...originHeaders, 'Content-Range': `bytes */${payload.length}`, 'Content-Length': 0, 'Accept-Ranges': 'bytes', 'Cache-Control': 'no-store' });
+          res.end();
+          return true;
+        }
+        status = 206;
+        body = payload.subarray(start, end + 1);
+        res.setHeader('Content-Range', `bytes ${start}-${end}/${payload.length}`);
+      }
+      res.writeHead(status, { ...originHeaders, 'Content-Type':file.mime, 'Content-Length':body.length, 'Accept-Ranges':'bytes', 'Cache-Control':'no-store', 'X-Content-Type-Options':'nosniff', ...(executable ? { 'Content-Security-Policy': csp } : {}) });
+      res.end(req.method === 'HEAD' ? undefined : body);
+      return true;
     }
     if (parts.length === 2 && req.method === 'POST') {
       if (action === 'capture-cover') return json(200,await service.captureCover(id,await input(req, LIMIT)));
