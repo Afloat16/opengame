@@ -11,6 +11,7 @@ import { transcribeAudio } from '../gateway/transcription-provider.ts';
 
 const LIMIT = 4_000_000;
 const CHUNK = 1_000_000;
+const LIMIT_MESSAGE = 'Transcription response exceeds 4 MB';
 
 async function inputFor(t: TestContext) {
   const dir = await mkdtemp(path.join(tmpdir(), 'asr-response-budget-'));
@@ -38,7 +39,7 @@ for (const headers of [{}, { 'content-length': '10' }]) {
   test(`transcription stops streaming bytes over its budget (${Object.keys(headers).length ? 'underreported length' : 'no length'})`, async t => {
     const input = await inputFor(t), stream = largeStream(headers);
     let calls = 0;
-    await assert.rejects(transcribeAudio(input, async () => { calls++; return stream.response; }), /response exceeds/);
+    await assert.rejects(transcribeAudio(input, async () => { calls++; return stream.response; }), { message: LIMIT_MESSAGE });
     assert.equal(calls, 1, 'a failed paid submission is never repeated');
     assert.ok(stream.produced() <= LIMIT + CHUNK, `consumed ${stream.produced()} bytes`);
     assert.equal(stream.cancelled(), true);
@@ -47,7 +48,7 @@ for (const headers of [{}, { 'content-length': '10' }]) {
 
 test('an oversized declared transcription body is cancelled before pulling it', async t => {
   const input = await inputFor(t), stream = largeStream({ 'content-length': String(8 * CHUNK) });
-  await assert.rejects(transcribeAudio(input, async () => stream.response), /response exceeds/);
+  await assert.rejects(transcribeAudio(input, async () => stream.response), { message: LIMIT_MESSAGE });
   assert.equal(stream.produced(), 0);
   assert.equal(stream.cancelled(), true);
 });
@@ -56,7 +57,7 @@ test('transcription limits UTF-8 bytes even when the JSON character count fits',
   const input = await inputFor(t);
   const json = JSON.stringify({ text: 'Hello', padding: '界'.repeat(1_400_000) });
   assert.ok(json.length < LIMIT && Buffer.byteLength(json) > LIMIT);
-  await assert.rejects(transcribeAudio(input, async () => new Response(json)), /response exceeds/);
+  await assert.rejects(transcribeAudio(input, async () => new Response(json)), { message: LIMIT_MESSAGE });
 });
 
 test('a valid response exactly at the byte budget still returns its transcript', async t => {
@@ -94,8 +95,34 @@ test('the default HTTPS transport enforces the transcription budget while receiv
     };
     return request;
   });
-  await assert.rejects(transcribeAudio(input), /response exceeds/);
+  await assert.rejects(transcribeAudio(input), { message: LIMIT_MESSAGE });
   assert.equal(calls, 1);
   assert.ok(produced <= LIMIT + CHUNK, `the transport buffered ${produced} bytes`);
   assert.equal(response.destroyed, true);
+});
+
+test('an over-budget transport rejection uses the transcription message before a Response exists', async t => {
+  const input = await inputFor(t);
+  const cause = new Error(`Provider response exceeds ${LIMIT / 1024 / 1024} MB`);
+  let calls = 0;
+  await assert.rejects(transcribeAudio(input, async () => { calls++; throw cause; }), {
+    message: LIMIT_MESSAGE,
+    cause,
+  });
+  assert.equal(calls, 1);
+});
+
+test('unrelated transport failures keep their original error and metadata', async t => {
+  const input = await inputFor(t);
+  for (const message of ['Provider request timed out', 'Provider response exceeds 256 MB']) {
+    const failure = Object.assign(new Error(message), { code: 'FIXTURE_ERROR' });
+    await assert.rejects(transcribeAudio(input, async () => { throw failure; }), error => error === failure);
+  }
+});
+
+test('an unrelated stream failure keeps its original error', async t => {
+  const input = await inputFor(t);
+  const failure = Object.assign(new Error('socket hang up'), { code: 'ECONNRESET' });
+  const response = new Response(new ReadableStream<Uint8Array>({ start(controller) { controller.error(failure); } }));
+  await assert.rejects(transcribeAudio(input, async () => response), error => error === failure);
 });
