@@ -291,6 +291,7 @@ jobs:
             tests/recreate-measure.test.ts tests/workflow.test.ts tests/catalog.test.ts tests/prism-templates.test.ts tests/fuzzy-search.test.ts \
             tests/inline-video.test.ts tests/extension-boundary.test.ts tests/connections.test.ts tests/readme-resources.test.ts \
             tests/motion-design-remix.test.ts tests/motion-package.test.ts tests/account-quota.test.ts tests/explore-preview.test.ts
+          node --test --test-name-pattern="^H1:" tests/game-harness-generalization.test.ts
       - name: Application diagnostics
         if: steps.scope.outputs.full == 'true' && matrix.suite == 'runtime'
         run: node --test --test-skip-pattern="^CLI works without a running app" tests/diagnostics.test.ts

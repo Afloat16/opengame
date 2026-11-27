@@ -6,9 +6,8 @@ import path from 'node:path';
 import test, { type TestContext } from 'node:test';
 import { GameProjects, gameHttp } from '../game-projects.ts';
 
-const entry = '<canvas></canvas><script type="module" src="./src/main.js"></script>';
-
-async function fixture(t: TestContext, files: { path: string; content: string }[]) {
+async function fixture(t: TestContext, files: { path: string; content: string }[], entrySrc = './src/main.js') {
+  const entry = `<canvas></canvas><script type="module" src="${entrySrc}"></script>`;
   const workspace = await mkdtemp(path.join(tmpdir(), 'game-module-urls-'));
   t.after(() => rm(workspace, { recursive: true, force: true }));
   const service = new GameProjects(workspace, path.join(workspace, 'templates'), path.join(workspace, 'kits'));
@@ -24,7 +23,7 @@ async function fixture(t: TestContext, files: { path: string; content: string }[
     exports.parseHTML = source => {
       if (source !== ${JSON.stringify(entry)}) throw Error('Unexpected HTML fixture');
       const script = { localName: 'script', closest: () => null,
-        getAttribute: name => ({ type: 'module', src: './src/main.js' })[name] ?? null };
+        getAttribute: name => ({ type: 'module', src: ${JSON.stringify(entrySrc)} })[name] ?? null };
       return { document: { querySelector: () => null,
         querySelectorAll: selector => selector === 'script[src], link[href]' ? [script] : [] } };
     };
@@ -32,6 +31,20 @@ async function fixture(t: TestContext, files: { path: string; content: string }[
   const { game } = await service.create({ prompt: 'Module URLs', multiplayer: false, genre: 'racing', style: null, setting: null });
   await service.write(game.id, [{ path: 'index.html', content: entry }, ...files]);
   return { workspace, service, id: game.id };
+}
+
+async function serve(t: TestContext, workspace: string, service: GameProjects, id: string) {
+  const server = createServer((req: IncomingMessage, res: ServerResponse) => {
+    void gameHttp(req, res, new URL(req.url!, 'http://localhost'), workspace, async () => ({}), service.runtimeRoot);
+  });
+  t.after(() => new Promise<void>((resolve, reject) => {
+    server.close(error => error ? reject(error) : resolve());
+    server.closeAllConnections();
+  }));
+  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address !== 'string');
+  return new URL(`http://127.0.0.1:${address.port}/api/games/${id}/play/index.html`);
 }
 
 for (const [specifier, filename] of [
@@ -43,17 +56,8 @@ for (const [specifier, filename] of [
     { path: 'src/main.js', content: `import ${JSON.stringify(specifier)};` },
     { path: filename, content: source },
   ]);
-  const server = createServer((req: IncomingMessage, res: ServerResponse) => {
-    void gameHttp(req, res, new URL(req.url!, 'http://localhost'), workspace, async () => ({}), service.runtimeRoot);
-  });
-  t.after(() => new Promise<void>((resolve, reject) => {
-    server.close(error => error ? reject(error) : resolve());
-    server.closeAllConnections();
-  }));
-  await new Promise<void>(resolve => server.listen(0, '127.0.0.1', resolve));
-  const address = server.address();
-  assert.ok(address && typeof address !== 'string');
-  const response = await fetch(new URL(specifier, `http://127.0.0.1:${address.port}/api/games/${id}/play/src/main.js`));
+  const entry = await serve(t, workspace, service, id);
+  const response = await fetch(new URL(specifier, new URL('./src/main.js', entry)));
   assert.equal(response.status, 200);
   assert.equal(await response.text(), source);
   assert.deepEqual((await service.validate(id)).diagnostics, []);
@@ -107,4 +111,65 @@ test('ordinary relative module imports still resolve parent directories', async 
     { path: 'src/value.js', content: 'export const value = 1;' },
   ]);
   assert.deepEqual((await service.validate(id)).diagnostics, []);
+});
+
+for (const [name, entrySrc, moduleUrl, moduleFile, childSpecifier, childFile] of [
+  ['imported encoded separator', './src/main.js', './src/nested%2Fmodule.js', 'src/nested/module.js', './c.js', 'src/c.js'],
+  ['entry encoded separator', './src/nested%2Fmodule.js', './src/nested%2Fmodule.js', 'src/nested/module.js', './c.js', 'src/c.js'],
+  ['entry literal empty segment', './src/a//module.js', './src/a//module.js', 'src/a/module.js', '../c.js', 'src/a/c.js'],
+  ['encoded reserved characters', './src/main.js', './src/level%23%3F%2Fone%252F.js', 'src/level#?/one%2F.js', './sibling%23%3F%25.js', 'src/sibling#?%.js'],
+]) test(`nested imports retain the browser URL base for ${name}`, async t => {
+  const moduleSource = `import ${JSON.stringify(childSpecifier)};`;
+  const childSource = 'export const value = 1;';
+  const { workspace, service, id } = await fixture(t, [
+    ...(entrySrc === './src/main.js' ? [{ path: 'src/main.js', content: `import ${JSON.stringify(moduleUrl.replace('./src/', './'))};` }] : []),
+    { path: moduleFile, content: moduleSource },
+    { path: childFile, content: childSource },
+  ], entrySrc);
+  const entry = await serve(t, workspace, service, id);
+  for (const prefix of ['/api/games/', '/motion-api/games/']) {
+    const base = new URL(entry);
+    base.pathname = base.pathname.replace('/api/games/', prefix);
+    const importedUrl = new URL(moduleUrl, base);
+    const imported = await fetch(importedUrl);
+    assert.equal(imported.status, 200);
+    assert.equal(await imported.text(), moduleSource);
+    const child = await fetch(new URL(childSpecifier, importedUrl));
+    assert.equal(child.status, 200);
+    assert.equal(await child.text(), childSource);
+  }
+  assert.deepEqual((await service.validate(id)).diagnostics, []);
+  assert.equal((await service.publish(id)).game.status, 'published');
+});
+
+test('one file loaded through distinct URL bases inspects both dependency graphs', async t => {
+  const { workspace, service, id } = await fixture(t, [
+    { path: 'src/main.js', content: 'import "./nested/module.js"; import "./nested%2Fmodule.js";' },
+    { path: 'src/nested/module.js', content: 'import "./c.js";' },
+    { path: 'src/nested/c.js', content: 'export const valid = 1;' },
+    { path: 'src/c.js', content: 'export const = ;' },
+  ]);
+  const entry = await serve(t, workspace, service, id);
+  const ordinary = new URL('./src/nested/module.js', entry);
+  const encoded = new URL('./src/nested%2Fmodule.js', entry);
+  assert.equal(await (await fetch(ordinary)).text(), await (await fetch(encoded)).text());
+  assert.equal(await (await fetch(new URL('./c.js', encoded))).text(), 'export const = ;');
+  const result = await service.validate(id);
+  assert.equal(result.passed, false);
+  assert.equal(result.diagnostics.length, 1);
+  assert.equal(result.diagnostics[0].path, 'src/c.js');
+  assert.match(result.diagnostics[0].message, /JavaScript syntax error/);
+  await assert.rejects(service.publish(id), /Game validation failed/);
+});
+
+test('entry URL decoding still rejects encoded traversal and empty segments', async t => {
+  for (const entrySrc of ['./src/nested%2F..%2Fmain.js', './src/nested%2F%2Fmain.js']) {
+    const { service, id } = await fixture(t, [
+      { path: 'src/main.js', content: 'export const valid = 1;' },
+      { path: 'src/nested/main.js', content: 'export const valid = 2;' },
+    ], entrySrc);
+    const result = await service.validate(id);
+    assert.equal(result.passed, false);
+    assert.ok(result.diagnostics.some(row => row.path === 'index.html' && /Referenced script not readable/.test(row.message)));
+  }
 });

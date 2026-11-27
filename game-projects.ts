@@ -48,6 +48,9 @@ export function cleanGamePath(value: unknown): string {
   if (typeof value !== 'string' || value.length > 240 || /[\\\x00-\x1f]/.test(value) || value.split('/').some(p => !p || p.startsWith('.') || p.includes(':'))) throw new GameError('Unsafe game file path');
   return value;
 }
+function gameUrlFilePath(pathname: string): string {
+  return pathname.split('/').filter(Boolean).map(decodeURIComponent).join('/');
+}
 async function jsonFile<T>(file: string, fallback?: T): Promise<T> {
   try { return JSON.parse(await readFile(file, 'utf8')); }
   catch (e) { if ((e as NodeJS.ErrnoException).code === 'ENOENT' && fallback !== undefined) return fallback; throw e; }
@@ -83,7 +86,7 @@ async function gameEntryDependencies(html: string, dir: string, game: GameCard, 
   const authoredBase = document.querySelector('base[href]')?.getAttribute('href');
   const base = (authoredBase && URL.parse(authoredBase, entry)) || entry;
   const errors = new Set<string>();
-  const entryScripts: string[] = [];
+  const entryScripts: string[] = []; // Encoded URL pathnames, not filesystem paths.
   const inlineScripts: string[] = [];
 
   for (const element of document.querySelectorAll('script:not([src])')) {
@@ -118,14 +121,14 @@ async function gameEntryDependencies(html: string, dir: string, game: GameCard, 
       continue;
     }
     try {
-      const relative = url.pathname.slice(prefix.length).split('/').map(decodeURIComponent).join('/');
+      const relative = gameUrlFilePath(url.pathname.slice(prefix.length));
       const file = await safeFile(dir, relative);
       if (!(await lstat(file)).isFile()) {
         errors.add(`Referenced ${kind} is not a file: ${reference}`);
       } else if (!mime[path.extname(file).toLowerCase()]?.startsWith(script ? 'text/javascript' : 'text/css')) {
         errors.add(`Referenced ${kind} has an unsupported file type: ${reference}`);
       } else if (script) {
-        entryScripts.push(relative);
+        entryScripts.push(url.pathname);
       }
     } catch (error) {
       const reason = (error as NodeJS.ErrnoException).code === 'ENOENT' ? 'not found' : 'not readable as a game file';
@@ -190,9 +193,15 @@ async function inspectLocalModuleGraph(
   const queue: string[] = [];
   let importsLogic = false;
   let importsThree = false;
-  const playRoot = `/api/games/${encodeURIComponent(gameId)}/play/`;
+  const playRoots = ['/api/games/', '/motion-api/games/'].map(prefix => `${prefix}${encodeURIComponent(gameId)}/play/`);
+  const moduleFilePath = (urlPath: string) => {
+    const root = playRoots.find(prefix => urlPath.startsWith(prefix));
+    if (!root) throw new GameError('Module URL leaves this game');
+    return gameUrlFilePath(urlPath.slice(root.length));
+  };
 
-  const enqueueSpecifier = async (fromPath: string, specifier: string) => {
+  const enqueueSpecifier = async (fromUrlPath: string, specifier: string) => {
+    const fromPath = moduleFilePath(fromUrlPath);
     const clean = specifier.replace(/[?#].*$/, '');
     if (/^(?:https?:)?\/\//i.test(clean)) {
       try {
@@ -206,12 +215,10 @@ async function inspectLocalModuleGraph(
     if (!clean.startsWith('./') && !clean.startsWith('../')) return;
     let resolved: string | undefined;
     try {
-      // Browser module specifiers are URLs, while fromPath is an already-decoded
-      // file path. Resolve dot segments before decoding, as the play route does.
-      const fromUrl = new URL(playRoot + fromPath.split('/').map(encodeURIComponent).join('/'), 'http://game.local');
-      const url = new URL(specifier, fromUrl);
-      if (!url.pathname.startsWith(playRoot)) throw new GameError('Module URL leaves this game');
-      resolved = url.pathname.slice(playRoot.length).split('/').filter(Boolean).map(decodeURIComponent).join('/');
+      // Encoded separators and empty URL segments affect relative import bases.
+      // Keep the URL identity through traversal; decode only for file access.
+      const url = new URL(specifier, 'http://game.local' + fromUrlPath);
+      resolved = moduleFilePath(url.pathname);
       if (resolved === 'logic.js') importsLogic = true;
       if (/^vendor\/(?:three\.module(?:\.min)?|GLTFLoader|SkeletonUtils|HumanoidRigController)\.js$/i.test(resolved)) importsThree = true;
       const target = await safeFile(dir, resolved);
@@ -219,8 +226,8 @@ async function inspectLocalModuleGraph(
         diagnostics.push({ path: fromPath, message: `Imported module is not a file: ${specifier}` });
         return;
       }
-      if (/\.(?:m?js|cjs)$/i.test(resolved) && !resolved.startsWith('vendor/') && !visited.has(resolved)) {
-        queue.push(resolved);
+      if (/\.(?:m?js|cjs)$/i.test(resolved) && !resolved.startsWith('vendor/') && !visited.has(url.pathname)) {
+        queue.push(url.pathname);
       }
     } catch (error) {
       if (resolved === 'logic.js') return; // logic.js missing is reported under path 'logic.js' below.
@@ -231,17 +238,19 @@ async function inspectLocalModuleGraph(
 
   for (const script of inlineScripts) {
     const { specifiers } = extractStaticModuleSpecifiers(script);
-    for (const specifier of specifiers) await enqueueSpecifier('index.html', specifier);
+    for (const specifier of specifiers) await enqueueSpecifier(playRoots[0] + 'index.html', specifier);
   }
   for (const entry of entryScripts) {
-    if (entry === 'logic.js') importsLogic = true;
-    if (!entry.startsWith('vendor/') && !visited.has(entry)) queue.push(entry);
+    const relative = moduleFilePath(entry);
+    if (relative === 'logic.js') importsLogic = true;
+    if (!relative.startsWith('vendor/') && !visited.has(entry)) queue.push(entry);
   }
 
   while (queue.length > 0 && visited.size < 200) {
-    const relative = queue.shift()!;
-    if (visited.has(relative)) continue;
-    visited.add(relative);
+    const urlPath = queue.shift()!;
+    if (visited.has(urlPath)) continue;
+    visited.add(urlPath);
+    const relative = moduleFilePath(urlPath);
     let source: string;
     try {
       source = await readFile(await safeFile(dir, relative), 'utf8');
@@ -257,9 +266,9 @@ async function inspectLocalModuleGraph(
       diagnostics.push({ path: relative, message: `JavaScript syntax error: ${syntaxError}` });
       continue;
     }
-    for (const specifier of specifiers) await enqueueSpecifier(relative, specifier);
+    for (const specifier of specifiers) await enqueueSpecifier(urlPath, specifier);
   }
-  return { diagnostics, importsLogic, visitedModules: [...visited], moduleSources, importsThree };
+  return { diagnostics, importsLogic, visitedModules: [...visited].map(moduleFilePath), moduleSources, importsThree };
 }
 
 function stripJsComments(source: string): string {
