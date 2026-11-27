@@ -215,9 +215,12 @@ export async function optimizeGlbTexturesForPublish(bytes: Buffer): Promise<GlbO
   const nextDoc = JSON.parse(JSON.stringify(doc));
   const binParts: Buffer[] = [];
   const relocatedRanges = new Map<string, number>();
+  const maxBinBytes = binary.length;
   let binOffset = 0;
-  const appendBinary = (data: Buffer): number => {
+  const appendBinary = (data: Buffer): number | undefined => {
     const pad = (4 - (binOffset % 4)) % 4;
+    // Overlapping extension ranges must not amplify the final concat allocation.
+    if (binOffset + pad + data.length > maxBinBytes) return undefined;
     if (pad > 0) {
       binParts.push(Buffer.alloc(pad));
       binOffset += pad;
@@ -233,7 +236,9 @@ export async function optimizeGlbTexturesForPublish(bytes: Buffer): Promise<GlbO
     const length = view.byteLength ?? 0;
     const replacement = convertedViewMap.get(bvIndex);
     const data = replacement ?? binary.subarray(start, start + length);
-    view.byteOffset = appendBinary(data);
+    const offset = appendBinary(data);
+    if (offset === undefined) return unchanged;
+    view.byteOffset = offset;
     view.byteLength = data.length;
     if (!replacement) relocatedRanges.set(`${start}:${length}`, view.byteOffset);
   }
@@ -242,6 +247,7 @@ export async function optimizeGlbTexturesForPublish(bytes: Buffer): Promise<GlbO
     let offset = relocatedRanges.get(key);
     if (offset === undefined) {
       offset = appendBinary(binary.subarray(start, start + length));
+      if (offset === undefined) return unchanged;
       relocatedRanges.set(key, offset);
     }
     nextDoc.bufferViews[index].extensions[extension].byteOffset = offset;

@@ -154,3 +154,32 @@ test('ordinary embedded textures still optimize without geometry changes', { ski
   assert.deepEqual(binary.subarray(doc.bufferViews[0].byteOffset, doc.bufferViews[0].byteOffset + positions.length), positions);
   assert.equal(doc.images[0].mimeType, 'image/webp');
 });
+
+for (const relation of ['nested', 'overlapping']) {
+  test(`repacking ${relation} meshopt ranges does not allocate an expanded BIN`, { skip: process.platform === 'win32' }, async t => {
+    await encoder(t);
+    const { doc, binary } = fixture('EXT_meshopt_compression', true);
+    const first = doc.bufferViews[0].extensions.EXT_meshopt_compression;
+    const second = doc.bufferViews[2].extensions.EXT_meshopt_compression;
+    // These untrusted spans are individually in bounds. Duplicating their
+    // overlap would inflate the repack before the final savings check rejects it.
+    if (relation === 'nested') {
+      first.byteOffset = 0; first.byteLength = binary.length;
+      second.byteOffset = 4; second.byteLength = binary.length - 8;
+    } else {
+      const quarter = Math.floor(binary.length / 4);
+      first.byteOffset = 0; first.byteLength = binary.length - quarter;
+      second.byteOffset = quarter; second.byteLength = binary.length - quarter;
+    }
+    const original = pack(doc, binary);
+    const concat = Buffer.concat, allocations: number[] = [];
+    t.mock.method(Buffer, 'concat', (parts: readonly Uint8Array[], length?: number) => {
+      if (length !== undefined) allocations.push(length);
+      return concat(parts, length);
+    });
+    const result = await optimizeGlbTexturesForPublish(original);
+    assert.equal(result.optimized, false);
+    assert.equal(result.data, original);
+    assert.ok(allocations.every(length => length <= binary.length), `Repack requested ${Math.max(...allocations)} bytes for a ${binary.length}-byte BIN`);
+  });
+}
