@@ -1,0 +1,78 @@
+name: Validate contribution source batch 5
+on:
+  push:
+    branches: [validation/improvements-20261127-batch5]
+permissions:
+  contents: read
+jobs:
+  verify:
+    name: Verify PR ${{ matrix.pr }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 3
+      matrix:
+        include:
+          - pr: 74
+            sha: '589fef4b9a87b15549c57ccd71dbcfed7d579068'
+            tests: 'tests/game-asset-range.test.ts'
+          - pr: 95
+            sha: '5f201a9646e9c4639c4e4f66424aaf5a020a9f61'
+            tests: 'tests/game-module-urls.test.ts'
+          - pr: 99
+            sha: '1677e9f5f380cc153d1bb7d395ab583e8ed90e35'
+            tests: 'tests/media-transfer.test.ts'
+          - pr: 100
+            sha: '3655aff98dcd848d5988c86c15d7bbec820bfe8e'
+            tests: 'tests/game-room-expiry.test.ts'
+    env:
+      OPENMOTION_TELEMETRY: '0'
+      OPENMOTION_AUTO_UPDATE: '0'
+      GIT_LFS_SKIP_SMUDGE: '1'
+    steps:
+      - name: Checkout exact contribution commit
+        uses: actions/checkout@v6.0.2
+        with:
+          repository: Afloat16/opengame
+          ref: ${{ matrix.sha }}
+          fetch-depth: 1
+          lfs: false
+          persist-credentials: false
+      - name: Verify source identity
+        env:
+          EXPECTED_SOURCE_SHA: ${{ matrix.sha }}
+        run: |
+          test "$(git rev-parse HEAD)" = "$EXPECTED_SOURCE_SHA"
+          git show --no-patch --format=fuller HEAD
+      - name: Setup repository-pinned Node
+        uses: actions/setup-node@v6
+        with:
+          node-version: '26.11.1'
+          cache: npm
+          cache-dependency-path: package-lock.json
+      - name: Install locked dependencies
+        run: npm ci --no-audit --no-fund
+      - name: Check source
+        run: npm run check
+      - name: Check backend types
+        run: npm run typecheck:backend
+      - name: Check Studio types
+        run: npm run typecheck:studio
+      - name: Build Studio
+        run: npm run build:studio
+      - name: Run contribution regressions
+        env:
+          REGRESSION_FILES: ${{ matrix.tests }}
+        run: |
+          read -r -a regression_files <<< "$REGRESSION_FILES"
+          node --experimental-strip-types --test "${regression_files[@]}"
+      - name: Run existing room integration
+        if: matrix.pr == 100
+        run: node --experimental-strip-types --test --test-name-pattern 'in-memory WebSocket upgrades|room frames reclaim|expired reconnect tokens|rooms accept sandbox' tests/game-projects.test.ts
+      - name: Run existing modular game integration with actual parser
+        if: matrix.pr == 95
+        run: node --experimental-strip-types --test --test-name-pattern '^H1:' tests/game-harness-generalization.test.ts
+      - name: Verify tracked source stayed unchanged
+        run: git diff --exit-code
+
