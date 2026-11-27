@@ -1053,7 +1053,9 @@ export async function applySourceUpdate(options: SourceUpdateOptions): Promise<S
   }
 
   await mkdir(options.dataDirectory, { recursive: true });
-  const lockPath = path.join(options.dataDirectory, UPDATE_LOCK_FILENAME);
+  // Workspaces share this checkout's Git state, dependencies and build outputs.
+  // Keep their updates serialized even when each has a different data directory.
+  const lockPath = path.join(repoRoot, '.artifacts', 'install', UPDATE_LOCK_FILENAME);
 
   return withProcessLock(lockPath, async () => {
     const readDirtyWorktreeFiles = async () => {
