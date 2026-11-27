@@ -18,6 +18,23 @@ for (const event of ['tick', 'membership'] as const) {
   }
 }
 
+for (const callback of ['setup', 'applyAction'] as const) {
+  for (const [name, result] of [
+    ['undefined', 'return undefined;'],
+    ['promise', 'return Promise.resolve({});'],
+    ['cyclic', 'const next = {}; next.self = next; return next;'],
+  ] as const) {
+    test(`${callback} retains its ${name} state check`, () => {
+      const source = starterLogic.replace(new RegExp(`^export function ${callback}[^\\n]*$`, 'm'),
+        `export function ${callback}() { ${result} }`);
+      const runtime = new GameRuntime(source, 'shared-state-check');
+      if (callback !== 'setup') runtime.setup(['player']);
+      assert.throws(() => callback === 'setup' ? runtime.setup(['player']) : runtime.apply('player', { type: 'score' }),
+        name === 'cyclic' ? /circular/i : new RegExp(`${callback} must return synchronous state`));
+    });
+  }
+}
+
 test('ordinary server ticks and membership updates still produce the expected state', () => {
   const runtime = new GameRuntime(starterLogic, 'valid-state');
   runtime.setup(['player']);
