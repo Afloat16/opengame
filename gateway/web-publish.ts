@@ -3,6 +3,7 @@ import { existsSync } from 'node:fs';
 import { mkdir, mkdtemp, readdir, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
+import { isDeepStrictEqual } from 'node:util';
 import { atomicJson, jsonFile } from '../phase1-versions.ts';
 import { withProcessLock } from '../shared/process-lock.ts';
 import type { AccountSummary } from '../shared/provider-directory.ts';
@@ -589,7 +590,8 @@ export class WebPublishService {
             await withProcessLock(this.lockFile(target.kind, target.id), async () => {
               const latest = await this.readState(target.kind, target.id);
               const entry = latest.publications[targetEntry];
-              if (entry && entry.slug === current.slug) {
+              // A delayed status response must not overwrite a later publication operation.
+              if (entry && isDeepStrictEqual(entry, current)) {
                 entry.status = nextStatus;
                 entry.url = refreshedUrl;
                 entry.updatedAt = Date.now();
